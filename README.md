@@ -23,11 +23,11 @@ entry:
 | `displaylink-gop` | DisplayLinkGop | Graphics output on DisplayLink USB display adapters and docks | Loading under firmware and registering a driver binding |
 | `chaoskey` | ChaosKeyDxe | The RNG protocol from a ChaosKey USB entropy device | Loading under firmware and registering a driver binding |
 
-Each exists as `<package>`, `<package>-aarch64`, `<package>-unstable`,
-and `<package>-unstable-aarch64` under `packages.x86_64-linux` (the
-AArch64 builds are cross-compiled from there; the FTDI driver has no
-AArch64 variants), placing `<Module>.efi` at the output's root. The `-unstable` builds are against edk2 master as
-last advanced; they are checked on every push and never released.
+Each exists as `<package>` and `<package>-aarch64` under
+`packages.x86_64-linux` (the AArch64 builds are cross-compiled from
+there; the FTDI driver has no AArch64 variants), placing
+`<Module>.efi` at the output's root, plus the `-unstable` variants
+described below.
 
 This repository adds no code to the drivers. It pins the edk2 core at a
 stable tag and edk2-platforms at a commit, builds each driver's own DSC
@@ -68,6 +68,24 @@ every push to `main` and weekly, and three things move the version:
 A pin move that leaves every driver byte-identical releases nothing.
 Each release's notes name the exact edk2, edk2-platforms, and nixpkgs
 commits it was built from.
+
+## Tracking edk2 master: the unstable variants
+
+Every drop-in also exists as `<package>-unstable` and
+`<package>-unstable-aarch64`, built from the same edk2-platforms pin
+against edk2 master instead of the stable tag (the `edk2-unstable-src`
+input, advanced by the weekly run alongside the other pins), versioned
+`0-unstable-<date>`. They are the early warning for the next stable
+tag: main's check run puts them through the same VM checks as the
+released builds, so an edk2 change that breaks a driver, its DSC, or
+this repository's build shows up weeks before the tag that carries it.
+They are never released, and a failure among them does not hold a
+release; the release workflow builds only the stable variants' checks.
+
+```bash
+nix build github:clhodapp/edk2-platforms-nix#ext4-dxe-unstable
+nix build github:clhodapp/edk2-platforms-nix#chaoskey-unstable-aarch64
+```
 
 ## Everything else: the extras
 
