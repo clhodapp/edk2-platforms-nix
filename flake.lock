@@ -18,11 +18,11 @@
     "edk2-platforms": {
       "flake": false,
       "locked": {
-        "lastModified": 1775256053,
-        "narHash": "sha256-FwGXRwDVwO3mEbBUATb0YqDOAQDaFPuanuHrTmmvUsw=",
+        "lastModified": 1788392891,
+        "narHash": "sha256-/7YKRcuHUmdfGQkTShIN/U5fmQPgaLKDYtgK3CJr3yM=",
         "owner": "tianocore",
         "repo": "edk2-platforms",
-        "rev": "e6a68f90643e5c2cb218628510cd1a60464e2ce5",
+        "rev": "061beb4c4bd259c073743f5ac01b5a1da4ce2010",
         "type": "github"
       },
       "original": {
@@ -52,10 +52,10 @@
     "edk2-unstable-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1788780528,
-        "narHash": "sha256-j/FqmBhg0bxHDKM0Qxho6godP1hLGyBkMK6bIWQ0Y7c=",
+        "lastModified": 1788840318,
+        "narHash": "sha256-Uvg2CIIUIaLUelfZWSSP1W1XvJIzZQqrGwSCdll0xdw=",
         "ref": "refs/heads/master",
-        "rev": "2485aee40c6b8c8ea535500b56da684c9e63c178",
+        "rev": "a4610f9cfef179f2013156da9768039f52519f04",
         "shallow": true,
         "type": "git",
         "url": "https://github.com/tianocore/edk2"
