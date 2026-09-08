@@ -1,0 +1,166 @@
+# SPDX-License-Identifier: MIT
+#
+# Builds the `extras` (see configs/flake-parts/default/extras.nix):
+# edk2-platforms packages this repository carries as pinned Nix
+# expressions but does not release. Each is its own job and may fail
+# without failing the run, since a feature package that stops building
+# at a new edk2 tag is a fact to record, not a reason to hold the
+# drivers; the outcome of every attribute is written to extras/STATUS.md
+# on main. Runs on the same pushes as release.yml and after the weekly
+# pin advance, in a separate workflow so the check pipeline and the
+# release stay as fast as they are.
+#
+# What the jobs build is kept only in this repository's Actions cache,
+# under its own key prefix (the check pipeline budgets against every
+# entry in the repository, so the prefix keeps the two apart), as an
+# on-disk Nix binary cache; nothing is pushed to cachix.
+name: extras
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly, an hour after release.yml's advance.
+    - cron: "17 7 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: extras
+  cancel-in-progress: true
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      names: ${{ steps.names.outputs.names }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      - id: names
+        run: |
+          names=$(nix eval --json '.#extras.x86_64-linux' --apply builtins.attrNames)
+          echo "names=$names" >> "$GITHUB_OUTPUT"
+          echo "$names"
+
+  build:
+    needs: list
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        name: ${{ fromJSON(needs.list.outputs.names) }}
+    env:
+      EXTRAS_CACHE: /home/runner/extras-cache
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ env.EXTRAS_CACHE }}
+          key: extras-${{ matrix.name }}-${{ github.sha }}
+          restore-keys: extras-${{ matrix.name }}-
+
+      - name: Prepare the cache
+        run: |
+          mkdir -p "$EXTRAS_CACHE/nar"
+          [[ -e "$EXTRAS_CACHE/nix-cache-info" ]] || echo "StoreDir: /nix/store" > "$EXTRAS_CACHE/nix-cache-info"
+
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            sandbox = true
+            extra-substituters = file://${{ env.EXTRAS_CACHE }}?trusted=true
+
+      # Pull from the clhodapp cache (the toolchain and BaseTools main's
+      # check run built); nothing is pushed there from here.
+      - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: clhodapp
+          skipPush: true
+          extraPullNames: nix-community,numtide
+
+      - name: Build
+        id: build
+        run: |
+          set -euo pipefail
+          out=$(nix build --print-build-logs --no-link --print-out-paths ".#extras.x86_64-linux.${{ matrix.name }}")
+          echo "$out"
+          # The output and its closure, less what cache.nixos.org serves,
+          # into the on-disk cache for the next run.
+          nix copy --to "file://$EXTRAS_CACHE?compression=zstd" "$out"
+
+      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        if: always()
+        with:
+          path: ${{ env.EXTRAS_CACHE }}
+          key: extras-${{ matrix.name }}-${{ github.sha }}
+
+      - name: Record the outcome
+        if: always()
+        run: |
+          mkdir -p outcome
+          echo "${{ matrix.name }} ${{ steps.build.outcome }}" > "outcome/${{ matrix.name }}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: outcome-${{ matrix.name }}
+          path: outcome/
+
+  status:
+    needs: build
+    if: always() && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: outcome-*
+          path: outcomes
+          merge-multiple: true
+      - name: Write extras/STATUS.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p extras
+          {
+            echo "# Extras build status"
+            echo
+            echo "Written by extras.yml for commit \`${GITHUB_SHA:0:12}\`; each attribute is \`extras.x86_64-linux.<name>\`."
+            echo
+            echo "| Attribute | Outcome |"
+            echo "|---|---|"
+            for f in $(ls outcomes | sort); do
+              read -r name outcome < "outcomes/$f"
+              echo "| \`$name\` | $outcome |"
+            done
+          } > extras/STATUS.md
+          cat extras/STATUS.md
+          if git diff --quiet -- extras/STATUS.md && [[ -z "$(git status --porcelain extras/STATUS.md)" ]]; then
+            echo "The status is unchanged."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add extras/STATUS.md
+          git commit -m "maint(extras): build status for ${GITHUB_SHA:0:12}"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:main

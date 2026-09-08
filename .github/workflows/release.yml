@@ -1,34 +1,36 @@
 # SPDX-License-Identifier: MIT
 #
-# Releases the driver without anyone tagging by hand. The version is
-# `<edk2>.<revision>` from pkgs/ext4-dxe/ext4-dxe/version.nix: `edk2` is
-# the edk2 stable tag the driver is built against (the `edk2-src` input
-# in flake.nix), `revision` counts rebuilds against that tag.
+# Releases the drop-in drivers, as one batch, without anyone tagging by
+# hand. The version is `<edk2>.<revision>` from
+# pkgs/edk2-platforms-nix/version.nix: `edk2` is the edk2 stable tag the
+# batch is built against (the `edk2-src` input in flake.nix), `revision`
+# counts rebuilds against that tag.
 #
 # What moves the version:
 # - A new edk2-stable tag upstream: the weekly run moves the `edk2-src`
 #   ref in flake.nix to it, re-locks, and sets `edk2` with `revision`
 #   back at 0. A release follows.
-# - A pin move that changes the driver (edk2-platforms, the driver's own
-#   source; nixpkgs, the toolchain; anything in flake.lock), whether
-#   from the weekly advance here or from the workspace's convergence:
-#   the run finds the fresh build differs from the release under the
-#   current version, and, since nothing but flake.lock changed since
-#   that release, bumps `revision` itself. A release follows.
-# - A change to a file this repository authors that changes the driver:
+# - A pin move that changes any released driver (edk2-platforms, the
+#   drivers' source; nixpkgs, the toolchain; anything in flake.lock),
+#   whether from the weekly advance here or from the workspace's
+#   convergence: the run finds the fresh build differs from the release
+#   under the current version, and, since nothing but flake.lock changed
+#   since that release, bumps `revision` itself. A release follows.
+# - A change to a file this repository authors that changes a driver:
 #   the run fails, since the binaries under a version must not change
 #   and this change is not a pin move. Bumping `revision` by hand and
 #   pushing is what releases it.
 #
 # Every run: reconcile `edk2` in version.nix with the lock (the weekly
 # run and a dispatch with `advance` first move the pins), build the
-# stable checks, build both architectures, then compare with the
-# release under the version's tag: none, create it at this commit;
-# identical, done; different, the rule above. A commit this workflow
-# pushes (a pin advance, a reconciled version, an automatic bump)
-# carries the workflow's own token, which starts no other run; the
-# release for it is created by the run that pushed it. The `unstable`
-# packages are advanced here but checked by check.yml only.
+# stable checks, build every released driver as the manifest lists
+# them, then compare with the release under the version's tag: none,
+# create it at this commit; identical, done; different, the rule above.
+# A commit this workflow pushes (a pin advance, a reconciled version, an
+# automatic bump) carries the workflow's own token, which starts no
+# other run; the release for it is created by the run that pushed it.
+# The `unstable` packages are advanced here but checked by check.yml
+# only, and the `extras` are built by extras.yml only.
 name: release
 
 on:
@@ -77,7 +79,7 @@ jobs:
             sandbox = true
 
       # Substitute from the clhodapp cache, where main's check run pushed
-      # both drivers, so this run downloads the very store paths a Nix
+      # the drivers, so this run downloads the very store paths a Nix
       # user at the same pins gets rather than compiling again. A public
       # cache needs no credentials to read; nothing is pushed from here.
       - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
@@ -92,7 +94,7 @@ jobs:
           ADVANCE: ${{ github.event_name == 'schedule' || inputs.advance == true }}
         run: |
           set -euo pipefail
-          version_file=pkgs/ext4-dxe/ext4-dxe/version.nix
+          version_file=pkgs/edk2-platforms-nix/version.nix
 
           # The edk2 tag the lock names, as its YYYYMM.
           locked_edk2() {
@@ -135,24 +137,35 @@ jobs:
           git commit -m "maint: advance pins (edk2-stable$edk2, edk2-platforms $(jq -r '.nodes."edk2-platforms".locked.rev' flake.lock | cut -c1-12))"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:main
 
+      # The checks of the stable variants, and the formatter: every
+      # check named after a released driver without an -unstable
+      # suffix, so a new drop-in's checks are picked up by name.
       - name: Run the stable checks
         run: |
-          nix build --print-build-logs --no-link \
-            '.#checks.x86_64-linux.ext4-dxe-vm' \
-            '.#checks.x86_64-linux.ext4-dxe-vm-aarch64' \
-            '.#checks.x86_64-linux.treefmt'
+          set -euo pipefail
+          nix build -L -o manifest '.#release-manifest'
+          attrs=$(jq -r '.[].attr' manifest | sort -u)
+          checks=$(nix eval --json '.#checks.x86_64-linux' --apply builtins.attrNames | jq -r '.[]')
+          targets=(.#checks.x86_64-linux.treefmt)
+          for a in $attrs; do
+            if grep -qx "$a" <<<"$checks"; then targets+=(".#checks.x86_64-linux.$a"); fi
+          done
+          printf 'check: %s\n' "${targets[@]}"
+          nix build --print-build-logs --no-link "${targets[@]}"
 
       # systemd-boot's drop-in directory requires the architecture suffix
       # (x64.efi, aa64.efi), so the release artifacts are named the way
-      # they are meant to be installed.
-      - name: Build both architectures
+      # they are meant to be installed; the manifest carries the names.
+      - name: Build every released driver
         run: |
+          set -euo pipefail
           rm -rf artifacts
           mkdir -p artifacts
-          nix build -L '.#ext4-dxe' -o result-x64
-          nix build -L '.#ext4-dxe-aarch64' -o result-aa64
-          install -m0644 result-x64/Ext4Dxe.efi artifacts/ext4_x64.efi
-          install -m0644 result-aa64/Ext4Dxe.efi artifacts/ext4_aa64.efi
+          nix build -L -o manifest '.#release-manifest'
+          jq -r '.[] | "\(.attr) \(.module) \(.file)"' manifest | while read -r attr module file; do
+            nix build -L -o "result-$attr" ".#$attr"
+            install -m0644 "result-$attr/$module.efi" "artifacts/$file"
+          done
           cd artifacts
           sha256sum ./*.efi > SHA256SUMS
           cat SHA256SUMS
@@ -163,7 +176,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          version_file=pkgs/ext4-dxe/ext4-dxe/version.nix
+          version_file=pkgs/edk2-platforms-nix/version.nix
           version=$(nix eval --raw '.#ext4-dxe.version')
           tag="v$version"
 
@@ -194,24 +207,26 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add "$version_file"
-            git commit -m "maint: revision $next, the driver changed under the pin move"
+            git commit -m "maint: revision $next, the drivers changed under the pin move"
             git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:main
             # The same bytes under the new name; rebuilt so the artifacts
             # are the store paths at the commit the release names.
-            nix build -L '.#ext4-dxe' -o result-x64
-            nix build -L '.#ext4-dxe-aarch64' -o result-aa64
-            install -m0644 result-x64/Ext4Dxe.efi artifacts/ext4_x64.efi
-            install -m0644 result-aa64/Ext4Dxe.efi artifacts/ext4_aa64.efi
+            rm -rf artifacts
+            mkdir -p artifacts
+            jq -r '.[] | "\(.attr) \(.module) \(.file)"' manifest | while read -r attr module file; do
+              nix build -L -o "result-$attr" ".#$attr"
+              install -m0644 "result-$attr/$module.efi" "artifacts/$file"
+            done
             (cd artifacts && sha256sum ./*.efi > SHA256SUMS)
             echo "action=create" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "::error::This commit builds a driver that differs from release $tag, and the change since it is not only a pin move. Advance \`revision\` in $version_file to release it."
+          echo "::error::This commit builds drivers that differ from release $tag, and the change since it is not only a pin move. Advance \`revision\` in $version_file to release it."
           exit 1
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: ext4-dxe-efi
+          name: edk2-platforms-nix-efi
           path: artifacts/
 
       - name: Create the release
@@ -224,7 +239,7 @@ jobs:
           tag="v$version"
           commit=$(git rev-parse HEAD)
           edk2_rev=$(nix eval --raw '.#ext4-dxe.edk2Rev')
-          ext4pkg_rev=$(nix eval --raw '.#ext4-dxe.ext4PkgRev')
+          platforms_rev=$(nix eval --raw '.#ext4-dxe.platformsRev')
           nixpkgs_rev=$(jq -r '.nodes.nixpkgs.locked.rev' flake.lock)
           {
             cat .github/release-notes-preamble.md
@@ -234,7 +249,7 @@ jobs:
             echo "| | |"
             echo "|---|---|"
             echo "| edk2 core | [edk2-stable${version%%.*}](https://github.com/tianocore/edk2/releases/tag/edk2-stable${version%%.*}) (\`$edk2_rev\`) |"
-            echo "| Ext4Pkg source | [tianocore/edk2-platforms@${ext4pkg_rev:0:12}](https://github.com/tianocore/edk2-platforms/tree/$ext4pkg_rev/Features/Ext4Pkg) |"
+            echo "| edk2-platforms | [tianocore/edk2-platforms@${platforms_rev:0:12}](https://github.com/tianocore/edk2-platforms/tree/$platforms_rev) |"
             echo "| Toolchain | nixpkgs \`nixos-26.05\` at [\`${nixpkgs_rev:0:12}\`](https://github.com/NixOS/nixpkgs/commit/$nixpkgs_rev) |"
             echo "| Built at | [\`${commit:0:12}\`](https://github.com/$GITHUB_REPOSITORY/commit/$commit) |"
           } > notes.md
@@ -244,7 +259,6 @@ jobs:
             --target "$commit" \
             --title "$tag" \
             --notes-file notes.md \
-            artifacts/ext4_x64.efi \
-            artifacts/ext4_aa64.efi \
+            artifacts/*.efi \
             artifacts/SHA256SUMS
           echo "::notice::Created release $tag at $commit."

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 {
 
-  description = "Ext4Dxe: edk2-platforms' read-only ext4 UEFI filesystem driver, built against edk2 stable tags for x86-64 and AArch64";
+  description = "edk2-platforms built against edk2 stable tags with nixpkgs' toolchain: drop-in UEFI drivers released for x86-64 and AArch64, and the rest as build attributes";
 
   # Honored only when this flake is evaluated directly (`nix build`,
   # `nix flake check`) and the settings are accepted: answer the prompt,
@@ -77,7 +77,7 @@
       };
     in
     lib.caisson.mkFlake {
-      name = "ext4-dxe";
+      name = "edk2-platforms-nix";
       configModule = lib.caisson.mkFlakeModule ./configs/flake-parts/default;
     };
 
