@@ -1,9 +1,9 @@
 # ext4-dxe
 
 TianoCore's Ext4Dxe, the read-only ext4 UEFI filesystem driver from
-edk2-platforms (`Features/Ext4Pkg`), built unmodified from a pinned tree
-for x86-64 and AArch64, and released as prebuilt binaries whenever the
-driver's upstream source or this build's configuration changes.
+edk2-platforms (`Features/Ext4Pkg`), built unmodified against edk2
+stable tags for x86-64 and AArch64, and released as prebuilt binaries
+whenever what goes into them changes.
 
 ## What it is
 
@@ -15,11 +15,11 @@ left as FAT. The driver reads only. It verifies metadata checksums
 incompatible features it does not know, and handles what current
 `mkfs.ext4` defaults produce: 64bit, extents, flex_bg, metadata_csum.
 
-This repository adds no code to the driver. It pins a commit of
-edk2-platforms, builds `Ext4Pkg.dsc` against the edk2 core from nixpkgs'
-stable channel (`nixos-26.05`), natively for x86-64 and through nixpkgs'
-cross toolchain for AArch64, and checks each binary in a VM before it is
-released.
+This repository adds no code to the driver. It pins the edk2 core at a
+stable tag and edk2-platforms at a commit, builds `Ext4Pkg.dsc` with
+the toolchain from nixpkgs' stable channel (`nixos-26.05`), natively
+for x86-64 and through nixpkgs' cross toolchain for AArch64, and checks
+each binary in a VM before it is released.
 
 ## Releases and versioning
 
@@ -27,27 +27,30 @@ Releases carry `ext4_x64.efi`, `ext4_aa64.efi`, and `SHA256SUMS`, named
 for systemd-boot's drop-in directory (`EFI/systemd/drivers/`, which
 requires the `x64.efi` / `aa64.efi` suffix).
 
-A release is `v<upstream>.<revision>`:
+A release is `v<edk2>.<revision>`:
 
-- `upstream` is the committer date of the newest edk2-platforms commit
-  touching `Features/Ext4Pkg` that the pinned tree reaches. Ext4Pkg
-  carries no version string and edk2-platforms has no releases, so the
-  driver's last source change is its version.
-- `revision` is this repository's, starting at 0 for each upstream
-  date. It advances when the build configuration changes under the same
-  upstream (a newer edk2 core or toolchain from nixpkgs) and the
-  released binaries should be replaced.
+- `edk2` is the edk2 stable tag the driver is built against
+  (`edk2-stable<edk2>`). Each new tag starts a new series at revision 0.
+- `revision` counts rebuilds against that tag.
 
 Releases are created by the `release` workflow, not by hand. It runs on
-every push to `main` and weekly. The weekly run advances the pin to
-upstream's newest Ext4Pkg commit; every run derives `upstream` from the
-lock, runs the checks, builds both architectures, and then creates the
-release for the current version if none exists, confirms an existing
-one is byte-identical, or fails because the build differs from what
-that version released. The failure is the signal to advance `revision`
-in `pkgs/ext4-dxe/ext4-dxe/version.nix`; a bumped revision pushed to
-`main` is released by the same workflow. Each release's notes name the
-exact edk2-platforms and nixpkgs commits it was built from.
+every push to `main` and weekly, and three things move the version:
+
+- edk2 tags a new stable release. The weekly run moves the pin to it
+  and releases `v<newtag>.0`.
+- A pin moves and the driver changes: edk2-platforms (the driver's own
+  source) or nixpkgs (the toolchain), whether advanced by the weekly run
+  or by the workspace's convergence. The run sees the build differ from
+  the release under the current version and, since only `flake.lock`
+  changed, bumps `revision` itself and releases.
+- A file in this repository changes and the driver changes. The run
+  fails rather than publish different bytes under an existing version;
+  bumping `revision` in `pkgs/ext4-dxe/ext4-dxe/version.nix` by hand
+  and pushing releases it.
+
+A pin move that leaves the driver byte-identical releases nothing. Each
+release's notes name the exact edk2, edk2-platforms, and nixpkgs
+commits it was built from.
 
 ## Using it
 
@@ -71,6 +74,11 @@ nix build github:clhodapp/ext4-dxe#ext4-dxe
 nix build github:clhodapp/ext4-dxe#ext4-dxe-aarch64
 ```
 
+`ext4-dxe-unstable` and `ext4-dxe-unstable-aarch64` are the same driver
+built against edk2 master as of the last weekly advance. They are
+checked on every push to `main` and never released; a failure there is
+an early look at what the next stable tag will need.
+
 ## Verification
 
 `nix flake check` boots each driver in a VM (OVMF on QEMU's q35 for
@@ -78,7 +86,8 @@ x86-64; nixpkgs' cross-built ArmVirtQemu on QEMU's `virt` machine for
 AArch64), loads it from the UEFI shell, and copies a 1 MiB multi-block
 file and a file in a nested directory off a volume made by `mkfs.ext4`
 at stock defaults, comparing the copies byte for byte with the
-originals. The release workflow runs the same checks before publishing.
+originals. The release workflow runs the stable checks before
+publishing.
 
 ## CI
 
@@ -92,11 +101,11 @@ copy under its own cache scope. `main`'s builds are pushed to the
 
 ## Binary cache
 
-What `main` builds, both drivers included, is pushed to the `clhodapp`
-cachix cache, signed with its key, so `nix build` at the same pins
-downloads the driver instead of building the edk2 toolchain. That cache
-skips paths its upstreams already hold, so using it means using them
-too:
+What `main` builds, all four drivers included, is pushed to the
+`clhodapp` cachix cache, signed with its key, so `nix build` at the same
+pins downloads the driver instead of building edk2's BaseTools. That
+cache skips paths its upstreams already hold, so using it means using
+them too:
 
 | Substituter | Public key |
 |---|---|

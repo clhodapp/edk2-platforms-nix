@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 {
 
-  description = "Ext4Dxe: edk2-platforms' read-only ext4 UEFI filesystem driver, built from the pinned tree for x86-64 and AArch64";
+  description = "Ext4Dxe: edk2-platforms' read-only ext4 UEFI filesystem driver, built against edk2 stable tags for x86-64 and AArch64";
 
   # Honored only when this flake is evaluated directly (`nix build`,
   # `nix flake check`) and the settings are accepted: answer the prompt,
@@ -28,13 +28,26 @@
 
     # Stable channel on purpose: a boot-path firmware artifact should churn
     # as little as possible, and nothing here needs bleeding-edge nixpkgs.
-    # The edk2 core and toolchain the driver is built with come from here.
+    # Only the toolchain and the edk2 package recipe (BaseTools build,
+    # source de-vendoring) come from here; the edk2 trees are pinned below.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
-    # The driver's source tree. Only Features/Ext4Pkg is used. The lock
-    # pins the commit; the release workflow keeps it at the newest commit
-    # touching that directory and derives the version from that commit's
-    # date (see pkgs/ext4-dxe/ext4-dxe/version.nix).
+    # The edk2 core the released driver is built against, at a stable
+    # tag; the tag is the driver's upstream version (see
+    # pkgs/ext4-dxe/ext4-dxe/version.nix). The release workflow moves
+    # this ref to each new edk2-stable tag. Submodules on: nixpkgs'
+    # recipe expects the vendored trees and de-vendors OpenSSL itself.
+    edk2-src.url = "git+https://github.com/tianocore/edk2?ref=refs/tags/edk2-stable202608&submodules=1&shallow=1";
+    edk2-src.flake = false;
+
+    # edk2 master, for the `unstable` packages; advanced weekly, never
+    # released.
+    edk2-unstable-src.url = "git+https://github.com/tianocore/edk2?ref=refs/heads/master&submodules=1&shallow=1";
+    edk2-unstable-src.flake = false;
+
+    # The driver's source tree; only Features/Ext4Pkg is used. Pinned in
+    # the lock and advanced weekly; a move that changes the built driver
+    # bumps the release revision automatically.
     edk2-platforms.url = "github:tianocore/edk2-platforms";
     edk2-platforms.flake = false;
   };

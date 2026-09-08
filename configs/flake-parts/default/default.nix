@@ -26,10 +26,10 @@
   caisson.nixpkgs = {
     overlays.all = {
       packages = lib.caisson.nixpkgs.mkPackagesOverlay (
-        { callPackage, ... }:
+        { callPackage, lib, ... }:
         import ../../../pkgs/ext4-dxe {
-          inherit callPackage;
-          inherit (inputs) edk2-platforms;
+          inherit callPackage lib;
+          inherit (inputs) edk2-src edk2-unstable-src edk2-platforms;
         }
       );
     };
@@ -86,6 +86,17 @@
               ext4-dxe-vm-aarch64 = import ../../../tests/ext4-dxe-vm.nix {
                 inherit pkgs;
                 ext4Dxe = pkgs.ext4-dxe.ext4-dxe-aarch64;
+              };
+              # The same against edk2 master. These gate main's check
+              # run, not a release: the release workflow builds the two
+              # stable checks by name.
+              ext4-dxe-vm-unstable = import ../../../tests/ext4-dxe-vm.nix {
+                inherit pkgs;
+                ext4Dxe = pkgs.ext4-dxe.ext4-dxe-unstable;
+              };
+              ext4-dxe-vm-unstable-aarch64 = import ../../../tests/ext4-dxe-vm.nix {
+                inherit pkgs;
+                ext4Dxe = pkgs.ext4-dxe.ext4-dxe-unstable-aarch64;
               };
             };
             treefmt.programs.nixfmt.enable = true;

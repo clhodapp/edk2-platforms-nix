@@ -1,24 +1,23 @@
 # SPDX-License-Identifier: MIT
 #
-# The driver's version, `<upstream>.<revision>`; a release is tagged
-# `v<upstream>.<revision>`.
+# The driver's version, `<edk2>.<revision>`; a release is tagged
+# `v<edk2>.<revision>`.
 #
-# `upstream` is the committer date of the newest tianocore/edk2-platforms
-# commit that touches Features/Ext4Pkg and is reachable from the locked
-# `edk2-platforms` input. Ext4Pkg carries no version of its own and
-# edk2-platforms has no releases, so the date of the driver's last source
-# change stands as its version. The release workflow maintains this field
-# from the lock (and resets `revision` to 0 when it changes); do not edit
-# it by hand.
+# `edk2` is the edk2 stable tag the driver is built against
+# (`edk2-stable<edk2>`), the same tag the `edk2-src` input in flake.nix
+# names. The release workflow maintains this field from the lock and
+# moves both to each new stable tag with `revision` back at 0; do not
+# edit it by hand.
 #
-# `revision` is this repository's. Advance it by hand when the build
-# configuration changes under an unchanged upstream (a nixpkgs bump that
-# moves the edk2 core or the toolchain, a change to the Nix here) and the
-# released binaries should be replaced. The release workflow refuses to
-# proceed when the driver it builds differs from the one released under
-# the same version, so a change that needs a bump is caught on the next
-# push to main.
+# `revision` counts rebuilds against the same edk2 tag. The release
+# workflow advances it by itself when a pin move (edk2-platforms, the
+# driver's own source; nixpkgs, the toolchain; anything else in
+# flake.lock) changes the built driver. A change to a file this
+# repository authors that changes the driver is advanced by hand: the
+# workflow refuses to publish a driver that differs from the one
+# released under the same version, and that refusal on a push to main
+# is the signal to bump this.
 {
-  upstream = "20260403";
+  edk2 = "202608";
   revision = 0;
 }

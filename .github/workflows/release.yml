@@ -1,28 +1,34 @@
 # SPDX-License-Identifier: MIT
 #
 # Releases the driver without anyone tagging by hand. The version is
-# `<upstream>.<revision>` from pkgs/ext4-dxe/ext4-dxe/version.nix:
-# `upstream` is the date of the newest edk2-platforms commit touching
-# Features/Ext4Pkg that the lock reaches, `revision` is advanced by hand
-# when the build configuration changes under the same upstream.
+# `<edk2>.<revision>` from pkgs/ext4-dxe/ext4-dxe/version.nix: `edk2` is
+# the edk2 stable tag the driver is built against (the `edk2-src` input
+# in flake.nix), `revision` counts rebuilds against that tag.
 #
-# Every run first reconciles `upstream` with the lock, so a pin moved by
-# any means (this workflow's weekly advance, the workspace's convergence)
-# shows up in the version, then runs the checks, builds both
-# architectures, and compares the result with the release under that
-# version's tag: no such release, and one is created at this commit; an
-# identical one, and there is nothing to do; a different one, and the
-# run fails, since the binaries under a version must not change. That
-# failure is the signal to advance `revision`.
+# What moves the version:
+# - A new edk2-stable tag upstream: the weekly run moves the `edk2-src`
+#   ref in flake.nix to it, re-locks, and sets `edk2` with `revision`
+#   back at 0. A release follows.
+# - A pin move that changes the driver (edk2-platforms, the driver's own
+#   source; nixpkgs, the toolchain; anything in flake.lock), whether
+#   from the weekly advance here or from the workspace's convergence:
+#   the run finds the fresh build differs from the release under the
+#   current version, and, since nothing but flake.lock changed since
+#   that release, bumps `revision` itself. A release follows.
+# - A change to a file this repository authors that changes the driver:
+#   the run fails, since the binaries under a version must not change
+#   and this change is not a pin move. Bumping `revision` by hand and
+#   pushing is what releases it.
 #
-# Triggers: a push to main (a revision bump, a pin bump from the
-# workspace's convergence, any other change); the weekly schedule, which
-# additionally advances the edk2-platforms pin to upstream's newest
-# Ext4Pkg commit and so cuts a release for every upstream change; and
-# workflow_dispatch, with the advance as an option. A commit this
-# workflow pushes (a pin advance, a reconciled version) carries the
-# workflow's own token, which does not start another run: the release
-# for it is created by the run that pushed it.
+# Every run: reconcile `edk2` in version.nix with the lock (the weekly
+# run and a dispatch with `advance` first move the pins), build the
+# stable checks, build both architectures, then compare with the
+# release under the version's tag: none, create it at this commit;
+# identical, done; different, the rule above. A commit this workflow
+# pushes (a pin advance, a reconciled version, an automatic bump)
+# carries the workflow's own token, which starts no other run; the
+# release for it is created by the run that pushed it. The `unstable`
+# packages are advanced here but checked by check.yml only.
 name: release
 
 on:
@@ -34,7 +40,7 @@ on:
   workflow_dispatch:
     inputs:
       advance:
-        description: Advance the edk2-platforms pin to upstream's newest Ext4Pkg commit
+        description: Advance the pins (edk2 stable tag, edk2 master, edk2-platforms) as the weekly run does
         required: false
         default: false
         type: boolean
@@ -51,7 +57,7 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     # Actions pinned by commit, as in check.yml: what this job produces
     # is loaded into firmware, so the pipeline that produces it must not
     # change under a moving tag.
@@ -59,6 +65,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+          # The whole history: the comparison with the released commit
+          # below diffs against it.
+          fetch-depth: 0
 
       - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
         with:
@@ -77,7 +86,7 @@ jobs:
           skipPush: true
           extraPullNames: nix-community,numtide
 
-      - name: Reconcile the version with the lock
+      - name: Advance the pins, then reconcile the version with the lock
         env:
           GH_TOKEN: ${{ github.token }}
           ADVANCE: ${{ github.event_name == 'schedule' || inputs.advance == true }}
@@ -85,39 +94,35 @@ jobs:
           set -euo pipefail
           version_file=pkgs/ext4-dxe/ext4-dxe/version.nix
 
-          # The newest commit touching Features/Ext4Pkg reachable from a
-          # ref: its sha and committer date.
-          newest_ext4pkg() {
-            gh api "repos/tianocore/edk2-platforms/commits?sha=$1&path=Features/Ext4Pkg&per_page=1" \
-              --jq '.[0] | "\(.sha) \(.commit.committer.date)"'
+          # The edk2 tag the lock names, as its YYYYMM.
+          locked_edk2() {
+            jq -r '.nodes."edk2-src".original.ref' flake.lock | sed -E 's|^refs/tags/edk2-stable||'
           }
 
-          locked=$(nix flake metadata --json | jq -r '.locks.nodes."edk2-platforms".locked.rev')
-          read -r sha date <<<"$(newest_ext4pkg "$locked")"
-          echo "Locked edk2-platforms $locked; its newest Ext4Pkg change is $sha ($date)."
-
           if [[ "$ADVANCE" == "true" ]]; then
-            read -r latest_sha latest_date <<<"$(newest_ext4pkg master)"
-            if [[ "$latest_sha" != "$sha" ]]; then
-              echo "Upstream's newest Ext4Pkg change is $latest_sha ($latest_date); advancing the pin to it."
-              nix flake lock --override-input edk2-platforms "github:tianocore/edk2-platforms/$latest_sha"
-              sha=$latest_sha
-              date=$latest_date
+            latest=$(git ls-remote --tags https://github.com/tianocore/edk2 'refs/tags/edk2-stable*' \
+              | sed -nE 's|.*refs/tags/edk2-stable([0-9]+)$|\1|p' | sort -n | tail -n1)
+            current=$(locked_edk2)
+            if (( latest > current )); then
+              echo "edk2 tagged edk2-stable$latest (this build is against $current); moving edk2-src to it."
+              sed -i -E "s|(edk2-src\.url = \"git\+https://github\.com/tianocore/edk2\?ref=refs/tags/edk2-stable)[0-9]+|\1$latest|" flake.nix
+              grep -q "edk2-stable$latest&" flake.nix
+              nix flake update edk2-src
             else
-              echo "The pin already reaches upstream's newest Ext4Pkg change."
+              echo "edk2-stable$current is upstream's newest stable tag."
             fi
+            nix flake update edk2-unstable-src edk2-platforms
           fi
 
-          upstream=${date:0:10}
-          upstream=${upstream//-/}
-          current=$(nix eval --raw --file "$version_file" upstream)
-          if [[ "$upstream" != "$current" ]]; then
-            echo "Upstream moves from $current to $upstream; revision returns to 0."
+          edk2=$(locked_edk2)
+          current=$(nix eval --raw --file "$version_file" edk2)
+          if [[ "$edk2" != "$current" ]]; then
+            echo "The lock is at edk2-stable$edk2, version.nix at $current; version becomes $edk2.0."
             sed -i -E \
-              -e "s/^  upstream = \"[0-9]+\";/  upstream = \"$upstream\";/" \
+              -e "s/^  edk2 = \"[0-9]+\";/  edk2 = \"$edk2\";/" \
               -e "s/^  revision = [0-9]+;/  revision = 0;/" \
               "$version_file"
-            [[ "$(nix eval --raw --file "$version_file" upstream)" == "$upstream" ]]
+            [[ "$(nix eval --raw --file "$version_file" edk2)" == "$edk2" ]]
           fi
 
           if git diff --quiet; then
@@ -126,18 +131,23 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add flake.lock "$version_file"
-          git commit -m "maint(ext4-dxe): upstream Ext4Pkg $upstream ($sha)"
+          git add flake.nix flake.lock "$version_file"
+          git commit -m "maint: advance pins (edk2-stable$edk2, edk2-platforms $(jq -r '.nodes."edk2-platforms".locked.rev' flake.lock | cut -c1-12))"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:main
 
-      - name: Run the flake checks
-        run: nix flake check --print-build-logs
+      - name: Run the stable checks
+        run: |
+          nix build --print-build-logs --no-link \
+            '.#checks.x86_64-linux.ext4-dxe-vm' \
+            '.#checks.x86_64-linux.ext4-dxe-vm-aarch64' \
+            '.#checks.x86_64-linux.treefmt'
 
       # systemd-boot's drop-in directory requires the architecture suffix
       # (x64.efi, aa64.efi), so the release artifacts are named the way
       # they are meant to be installed.
       - name: Build both architectures
         run: |
+          rm -rf artifacts
           mkdir -p artifacts
           nix build -L '.#ext4-dxe' -o result-x64
           nix build -L '.#ext4-dxe-aarch64' -o result-aa64
@@ -147,12 +157,65 @@ jobs:
           sha256sum ./*.efi > SHA256SUMS
           cat SHA256SUMS
 
+      - name: Compare with the release under this version; bump or refuse
+        id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version_file=pkgs/ext4-dxe/ext4-dxe/version.nix
+          version=$(nix eval --raw '.#ext4-dxe.version')
+          tag="v$version"
+
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "No release $tag yet."
+            echo "action=create" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --output released.SHA256SUMS
+          if cmp -s released.SHA256SUMS artifacts/SHA256SUMS; then
+            echo "::notice::Release $tag exists and matches this build; nothing to do."
+            echo "action=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          diff released.SHA256SUMS artifacts/SHA256SUMS || true
+
+          # What changed since the released commit decides who bumps.
+          released=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json targetCommitish --jq .targetCommitish)
+          changed=$(git diff --name-only "$released" HEAD)
+          echo "Changed since $tag ($released):"
+          printf '  %s\n' $changed
+          if [[ "$changed" == "flake.lock" ]]; then
+            revision=$(nix eval --file "$version_file" revision)
+            next=$((revision + 1))
+            echo "Only pins moved; revision $revision becomes $next."
+            sed -i -E "s/^  revision = [0-9]+;/  revision = $next;/" "$version_file"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$version_file"
+            git commit -m "maint: revision $next, the driver changed under the pin move"
+            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:main
+            # The same bytes under the new name; rebuilt so the artifacts
+            # are the store paths at the commit the release names.
+            nix build -L '.#ext4-dxe' -o result-x64
+            nix build -L '.#ext4-dxe-aarch64' -o result-aa64
+            install -m0644 result-x64/Ext4Dxe.efi artifacts/ext4_x64.efi
+            install -m0644 result-aa64/Ext4Dxe.efi artifacts/ext4_aa64.efi
+            (cd artifacts && sha256sum ./*.efi > SHA256SUMS)
+            echo "action=create" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::error::This commit builds a driver that differs from release $tag, and the change since it is not only a pin move. Advance \`revision\` in $version_file to release it."
+          exit 1
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ext4-dxe-efi
           path: artifacts/
 
-      - name: Compare with the release under this version, or create it
+      - name: Create the release
+        if: steps.compare.outputs.action == 'create'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -160,18 +223,9 @@ jobs:
           version=$(nix eval --raw '.#ext4-dxe.version')
           tag="v$version"
           commit=$(git rev-parse HEAD)
-
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --output released.SHA256SUMS
-            if cmp -s released.SHA256SUMS artifacts/SHA256SUMS; then
-              echo "::notice::Release $tag exists and matches this build; nothing to do."
-              exit 0
-            fi
-            diff released.SHA256SUMS artifacts/SHA256SUMS || true
-            echo "::error::This commit builds a driver that differs from release $tag. Advance \`revision\` in pkgs/ext4-dxe/ext4-dxe/version.nix to release it, or restore the configuration that produced $tag."
-            exit 1
-          fi
-
+          edk2_rev=$(nix eval --raw '.#ext4-dxe.edk2Rev')
+          ext4pkg_rev=$(nix eval --raw '.#ext4-dxe.ext4PkgRev')
+          nixpkgs_rev=$(jq -r '.nodes.nixpkgs.locked.rev' flake.lock)
           {
             cat .github/release-notes-preamble.md
             echo
@@ -179,9 +233,10 @@ jobs:
             echo
             echo "| | |"
             echo "|---|---|"
-            echo "| Ext4Pkg source | [tianocore/edk2-platforms@$(nix eval --raw '.#ext4-dxe.ext4PkgRev')](https://github.com/tianocore/edk2-platforms/tree/$(nix eval --raw '.#ext4-dxe.ext4PkgRev')/Features/Ext4Pkg); newest Ext4Pkg change $(nix eval --raw '.#ext4-dxe.version' | cut -d. -f1) |"
-            echo "| edk2 core | $(nix eval --raw '.#ext4-dxe.edk2Version'), from nixpkgs [\`$(nix flake metadata --json | jq -r '.locks.nodes.nixpkgs.locked.rev')\`](https://github.com/NixOS/nixpkgs/commit/$(nix flake metadata --json | jq -r '.locks.nodes.nixpkgs.locked.rev')) (\`nixos-26.05\`) |"
-            echo "| Built at | [\`$commit\`](https://github.com/$GITHUB_REPOSITORY/commit/$commit) |"
+            echo "| edk2 core | [edk2-stable${version%%.*}](https://github.com/tianocore/edk2/releases/tag/edk2-stable${version%%.*}) (\`$edk2_rev\`) |"
+            echo "| Ext4Pkg source | [tianocore/edk2-platforms@${ext4pkg_rev:0:12}](https://github.com/tianocore/edk2-platforms/tree/$ext4pkg_rev/Features/Ext4Pkg) |"
+            echo "| Toolchain | nixpkgs \`nixos-26.05\` at [\`${nixpkgs_rev:0:12}\`](https://github.com/NixOS/nixpkgs/commit/$nixpkgs_rev) |"
+            echo "| Built at | [\`${commit:0:12}\`](https://github.com/$GITHUB_REPOSITORY/commit/$commit) |"
           } > notes.md
 
           gh release create "$tag" \

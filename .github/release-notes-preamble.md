@@ -13,7 +13,7 @@ TianoCore's Ext4Dxe (edk2-platforms, `Features/Ext4Pkg`), built unmodified: a re
 
 ## Versioning
 
-A release is `v<upstream>.<revision>`. `upstream` is the date of the newest edk2-platforms commit that touches `Features/Ext4Pkg` in the tree the driver was built from, since Ext4Pkg carries no version and edk2-platforms has no releases. `revision` counts rebuilds of the same upstream source with a changed build configuration (a newer edk2 core or toolchain from nixpkgs). Both architectures are built together from one commit, so a release always carries both.
+A release is `v<edk2>.<revision>`. `<edk2>` is the edk2 stable tag the driver is built against (`edk2-stable<edk2>`); each new stable tag starts a new series at revision 0. `<revision>` counts rebuilds against that tag: it advances whenever a move of the driver's source (edk2-platforms) or of the toolchain (nixpkgs) changes the binaries, and when this repository's own build configuration changes. Both architectures are built together from one commit, so a release always carries both. The "This release" table below names the exact commits.
 
 ## Supported platforms
 
@@ -21,7 +21,7 @@ x86-64 and AArch64 UEFI. Each release is verified before it is published by load
 
 ## Provenance
 
-The artifacts are the store paths the repository's CI built and pushed to its binary cache for the tagged commit, copied out and renamed; they are byte-identical to what `nix build .#ext4-dxe` (or `.#ext4-dxe-aarch64`) produces at that commit, which is one way to check a download beyond `SHA256SUMS`. The "This release" table below names the exact upstream and nixpkgs commits.
+The artifacts are the store paths the repository's CI built for the tagged commit, copied out and renamed; they are byte-identical to what `nix build .#ext4-dxe` (or `.#ext4-dxe-aarch64`) produces at that commit, which is one way to check a download beyond `SHA256SUMS`.
 
 ## Installing
 
