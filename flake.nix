@@ -35,14 +35,17 @@
     # The edk2 core the released driver is built against, at a stable
     # tag; the tag is the driver's upstream version (see
     # pkgs/ext4-dxe/ext4-dxe/version.nix). The release workflow moves
-    # this ref to each new edk2-stable tag. Submodules on: nixpkgs'
-    # recipe expects the vendored trees and de-vendors OpenSSL itself.
-    edk2-src.url = "git+https://github.com/tianocore/edk2?ref=refs/tags/edk2-stable202608&submodules=1&shallow=1";
+    # this ref to each new edk2-stable tag. Without submodules: they
+    # hold the crypto and test libraries (OpenSSL alone is over half
+    # the tree) and nothing built here links or runs them; the one
+    # BaseTools program that needs one is left out of the build (see
+    # pkgs/ext4-dxe/default.nix).
+    edk2-src.url = "git+https://github.com/tianocore/edk2?ref=refs/tags/edk2-stable202608&shallow=1";
     edk2-src.flake = false;
 
     # edk2 master, for the `unstable` packages; advanced weekly, never
     # released.
-    edk2-unstable-src.url = "git+https://github.com/tianocore/edk2?ref=refs/heads/master&submodules=1&shallow=1";
+    edk2-unstable-src.url = "git+https://github.com/tianocore/edk2?ref=refs/heads/master&shallow=1";
     edk2-unstable-src.flake = false;
 
     # The driver's source tree; only Features/Ext4Pkg is used. Pinned in

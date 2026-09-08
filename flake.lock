@@ -35,18 +35,16 @@
       "flake": false,
       "locked": {
         "lastModified": 1786522436,
-        "narHash": "sha256-wQmSwqiL1x/QpOmvcJh0xxWEypBKem7FeR9fkLmarHk=",
+        "narHash": "sha256-HSSw9b1vz5VLotq4hiTPt9+3XkLSisXRWSN/aknoQhQ=",
         "ref": "refs/tags/edk2-stable202608",
         "rev": "2970e5699ba6267f3384ffab20f96647578aebc8",
         "shallow": true,
-        "submodules": true,
         "type": "git",
         "url": "https://github.com/tianocore/edk2"
       },
       "original": {
         "ref": "refs/tags/edk2-stable202608",
         "shallow": true,
-        "submodules": true,
         "type": "git",
         "url": "https://github.com/tianocore/edk2"
       }
@@ -55,18 +53,16 @@
       "flake": false,
       "locked": {
         "lastModified": 1788780528,
-        "narHash": "sha256-Bo8nBxPqPwxJJ6lPQu+sCNZ8OkwAN9qkjNn8ZmujcfE=",
+        "narHash": "sha256-j/FqmBhg0bxHDKM0Qxho6godP1hLGyBkMK6bIWQ0Y7c=",
         "ref": "refs/heads/master",
         "rev": "2485aee40c6b8c8ea535500b56da684c9e63c178",
         "shallow": true,
-        "submodules": true,
         "type": "git",
         "url": "https://github.com/tianocore/edk2"
       },
       "original": {
         "ref": "refs/heads/master",
         "shallow": true,
-        "submodules": true,
         "type": "git",
         "url": "https://github.com/tianocore/edk2"
       }

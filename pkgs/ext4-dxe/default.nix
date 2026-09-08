@@ -16,12 +16,14 @@ let
   # buildPackages.edk2, and the AArch64 driver is built from pkgsCross,
   # so a per-package override would leave those at nixpkgs' own edk2.
   #
-  # The tree is used as shipped, submodules included. nixpkgs' recipe
+  # The tree is used as shipped, without submodules. nixpkgs' recipe
   # patches its own tree for the GCC5 toolchain (reading the prefix
   # from the environment) and de-vendors OpenSSL; from edk2-stable202608
   # GCC5 is gone and the GCC toolchain reads its prefix from the
   # environment already (see ./ext4-dxe), and nothing built here uses
-  # CryptoPkg.
+  # CryptoPkg. The BaseTools build is the one place a submodule is
+  # compiled (BrotliCompress, from the brotli tree under
+  # MdeModulePkg); a driver build never runs it, so it is left out.
   withEdk2 =
     { src, edk2Version }:
     pkgs:
@@ -31,6 +33,11 @@ let
           version = edk2Version;
           srcWithVendoring = src;
           inherit src;
+          # The makefile has CRLF line endings, hence the loose pattern.
+          postPatch = ''
+            sed -i '/^  BrotliCompress \\/d' BaseTools/Source/C/GNUmakefile
+            ! grep -q BrotliCompress BaseTools/Source/C/GNUmakefile
+          '';
         });
       }
     );

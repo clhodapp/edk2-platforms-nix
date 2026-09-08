@@ -50,10 +50,28 @@ edk2.mkDerivation "Features/Ext4Pkg/Ext4Pkg.dsc" {
 
   # Graft the package into the edk2 workspace at the path its DSC expects
   # ([Components] lists Features/Ext4Pkg/Ext4Dxe/Ext4Dxe.inf).
+  #
+  # The edk2 tree comes without submodules, and some package
+  # declarations list include directories inside one (MdePkg's
+  # MipiSysTLib, for instance); the build refuses a package whose
+  # declared include directory is absent, whether or not anything
+  # includes from it. Each such directory is created empty.
   postPatch = ''
     mkdir -p Features
     cp -r ${edk2-platforms}/Features/Ext4Pkg Features/Ext4Pkg
     chmod -R u+w Features
+
+    for dec in $(find . -name '*.dec'); do
+      awk '/^\[/ { inc = ($0 ~ /^\[Includes/) } inc && !/^\[/ { print }' "$dec" \
+        | sed 's/\r$//; s/#.*//; s/^[[:space:]]*//; s/[[:space:]]*$//' \
+        > "$TMPDIR/includes"
+      while read -r inc; do
+        case "$inc" in
+          "" | \[*) continue ;;
+        esac
+        mkdir -p "$(dirname "$dec")/$inc"
+      done < "$TMPDIR/includes"
+    done
   '';
 
   installPhase = ''
