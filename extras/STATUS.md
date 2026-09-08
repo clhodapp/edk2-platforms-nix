@@ -1,22 +1,22 @@
 # Extras build status
 
-Written by extras.yml for commit `b2b0bcea0e83`; each attribute is `extras.x86_64-linux.<name>`.
+Written by extras.yml for commit `4997799ea169`; each attribute is `extras.x86_64-linux.<name>`.
 
 | Attribute | Outcome |
 |---|---|
-| `intel-acpi-debug-feature` | success |
+| `intel-acpi-debug-feature` | failure |
 | `intel-advanced-feature-pkg` | failure |
-| `intel-asf-feature` | success |
-| `intel-beep-debug-feature` | success |
+| `intel-asf-feature` | failure |
+| `intel-beep-debug-feature` | failure |
 | `intel-ipmi-feature` | failure |
-| `intel-logo-feature` | success |
+| `intel-logo-feature` | failure |
 | `intel-network-feature` | failure |
-| `intel-platform-payload-feature` | success |
-| `intel-post-code-debug-feature` | success |
-| `intel-s3-feature` | success |
+| `intel-platform-payload-feature` | failure |
+| `intel-post-code-debug-feature` | failure |
+| `intel-s3-feature` | failure |
 | `intel-smbios-feature` | failure |
-| `intel-spcr-feature` | success |
-| `intel-template-feature` | success |
+| `intel-spcr-feature` | failure |
+| `intel-template-feature` | failure |
 | `intel-usb3-debug-feature` | success |
 | `intel-user-auth-feature` | failure |
-| `intel-virtual-keyboard-feature` | success |
+| `intel-virtual-keyboard-feature` | failure |
