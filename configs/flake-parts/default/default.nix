@@ -9,7 +9,7 @@
 }:
 {
 
-  imports = [ (lib.caisson.mkFlakeModule ./extras.nix) ];
+  imports = [ (lib.caisson.flake-parts.mkModule ./extras.nix) ];
 
   debug = false;
   systems = [ "x86_64-linux" ];
