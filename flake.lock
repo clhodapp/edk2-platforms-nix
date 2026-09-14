@@ -18,11 +18,11 @@
     "edk2-platforms": {
       "flake": false,
       "locked": {
-        "lastModified": 1788392891,
-        "narHash": "sha256-/7YKRcuHUmdfGQkTShIN/U5fmQPgaLKDYtgK3CJr3yM=",
+        "lastModified": 1788959860,
+        "narHash": "sha256-StR4/CQAgnFSzG+dp1wKQtiPr/x0dP9ucIIFFnD1H/k=",
         "owner": "tianocore",
         "repo": "edk2-platforms",
-        "rev": "061beb4c4bd259c073743f5ac01b5a1da4ce2010",
+        "rev": "2db572db2fead29fbb4b622b0ea954b2f2f93a62",
         "type": "github"
       },
       "original": {
@@ -52,11 +52,11 @@
     "edk2-unstable-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1788840318,
-        "narHash": "sha256-Uvg2CIIUIaLUelfZWSSP1W1XvJIzZQqrGwSCdll0xdw=",
+        "lastModified": 1789326351,
+        "narHash": "sha256-O6IfaiVgdi1QbCkeWoEmx97ZKZJDD9rVFYKNvKPZZfw=",
         "ref": "refs/heads/master",
-        "rev": "a4610f9cfef179f2013156da9768039f52519f04",
-        "shallow": true,
+        "rev": "203bf1ffa12e890e238d710c6c6cf9d15615951b",
+        "revCount": 36735,
         "type": "git",
         "url": "https://github.com/tianocore/edk2"
       },
@@ -69,11 +69,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1788690626,
-        "narHash": "sha256-+v4I4LawmRD/mVxO7QIAerRrCkElp3YImzWkkUnvOTg=",
+        "lastModified": 1789344334,
+        "narHash": "sha256-vdhpDJ3Lr24lkZ+fDCjmBRRtw9/vcSzkqGJOJyF5h2U=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "c25784012c9982bca5b3e0de87e90bbdac8927d3",
+        "rev": "c3eea5b2156db11c7eeeada3dc737711255b253e",
         "type": "github"
       },
       "original": {
