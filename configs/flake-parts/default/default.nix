@@ -12,8 +12,6 @@
   imports = [ (lib.caisson.flake-parts.mkModule ./extras.nix) ];
 
   debug = false;
-  systems = [ "x86_64-linux" ];
-
   caisson = {
     configInfo.configName = "edk2-platforms-nix";
     libOverlays.exported = libOverlays: { inherit (libOverlays) default; };
