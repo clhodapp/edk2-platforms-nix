@@ -9,7 +9,10 @@
 }:
 {
 
-  imports = [ (lib.caisson.flake-parts.mkModule ./extras.nix) ];
+  imports = [
+    inputs.flake-parts.flakeModules.partitions
+    (lib.caisson.flake-parts.mkModule ./extras.nix)
+  ];
 
   debug = false;
   caisson = {

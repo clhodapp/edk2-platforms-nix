@@ -31,6 +31,8 @@
     # Only the toolchain and the edk2 package recipe (BaseTools build,
     # source de-vendoring) come from here; the edk2 trees are pinned below.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
 
     # The edk2 core the released driver is built against, at a stable
     # tag; the tag is the driver's upstream version (see
@@ -61,7 +63,6 @@
       lib = caisson.lib.caisson-core.mkLib {
         inherit inputs;
         systems = [ "x86_64-linux" ];
-        defaultEcosystemSrc.nixpkgs = inputs.nixpkgs;
 
         projects = {
           inherit caisson;
