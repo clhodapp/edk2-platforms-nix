@@ -62,6 +62,7 @@
     let
       lib = caisson.lib.caisson-core.mkLib {
         inherit inputs;
+        namespace = "edk2-platforms-nix";
         systems = [ "x86_64-linux" ];
 
         projects = {
@@ -74,7 +75,6 @@
       };
     in
     lib.caisson.flake-parts.mkConfiguration {
-      name = "edk2-platforms-nix";
       configModule = lib.caisson.flake-parts.mkModule ./configs/flake-parts/default;
     };
 
