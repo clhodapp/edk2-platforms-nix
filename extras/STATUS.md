@@ -1,6 +1,6 @@
 # Extras build status
 
-Written by extras.yml for commit `43e28fc57e85`; each attribute is `extras.x86_64-linux.<name>`.
+Written by extras.yml for commit `78879285f7b9`; each attribute is `extras.x86_64-linux.<name>`.
 
 | Attribute | Outcome |
 |---|---|
@@ -10,11 +10,11 @@ Written by extras.yml for commit `43e28fc57e85`; each attribute is `extras.x86_6
 | `intel-beep-debug-feature` | success |
 | `intel-ipmi-feature` | failure |
 | `intel-logo-feature` | success |
-| `intel-network-feature` | failure |
+| `intel-network-feature` | success |
 | `intel-platform-payload-feature` | success |
 | `intel-post-code-debug-feature` | success |
 | `intel-s3-feature` | success |
-| `intel-smbios-feature` | failure |
+| `intel-smbios-feature` | success |
 | `intel-spcr-feature` | success |
 | `intel-template-feature` | success |
 | `intel-usb3-debug-feature` | success |
