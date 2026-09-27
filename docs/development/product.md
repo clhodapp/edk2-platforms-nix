@@ -82,7 +82,7 @@ checks do not gate a release.
 ## The extras
 
 `extras.<system>.<name>` holds the Intel feature packages' validation
-builds (`configs/flake-parts/default/extras.nix`). They live outside
+builds (`configs/flake/edk2-platforms-nix/extras.nix`). They live outside
 `packages` and `checks` because the fleet's check pipeline builds every
 attribute of both and fails on any, and a feature package that stops
 building at a new edk2 tag must not turn every pull request red or

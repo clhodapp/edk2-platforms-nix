@@ -26,7 +26,7 @@ taking `{ buildDsc }` and naming its DSC, its modules, and their
 release asset prefixes in `passthru.release`; a line in
 `pkgs/edk2-platforms-nix/default.nix`'s `dropIns` with the
 architectures its DSC supports; and checks in
-`configs/flake-parts/default/default.nix` through `forVariants`. The
+`configs/flake/edk2-platforms-nix/default.nix` through `forVariants`. The
 release manifest and the release workflow pick it up from there.
 
 Advancing the revision by hand (after a change to this repository's
