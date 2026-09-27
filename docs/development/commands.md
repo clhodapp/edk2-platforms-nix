@@ -29,10 +29,13 @@ architectures its DSC supports; and checks in
 `configs/flake-parts/default/default.nix` through `forVariants`. The
 release manifest and the release workflow pick it up from there.
 
-Advancing the revision by hand (after a change to this repository's
-own files that changes a driver): edit `revision` in
-`pkgs/edk2-platforms-nix/version.nix`, commit, push to main; the
-release workflow publishes the new version on that push.
+Releasing after a burst of changes to this repository's own files:
+start the `release` workflow from the Actions tab with "bump" checked.
+It bumps `revision` in `pkgs/edk2-platforms-nix/version.nix`, pushes,
+and publishes the new version in the same run, provided the drivers
+differ from the last release; a week without a change to `main`
+releases them the same way without the button. Editing `revision` by
+hand and pushing still works.
 
 Advancing the pins by hand rather than waiting for the weekly run:
 start the `release` workflow from the Actions tab with "advance"

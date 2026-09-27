@@ -53,10 +53,13 @@ each. Three things move the version:
   The run finds the fresh build differs from the release under the
   current version and, because nothing but `flake.lock` changed since
   that release, bumps `revision` itself. A release follows.
-- A file this repository authors changes and a driver changes. The run
-  fails: the binaries under a version must not change, and the change
-  is not a pin move. Bumping `revision` by hand and pushing is what
-  releases it.
+- A file this repository authors changes and a driver changes. The
+  binaries under a version must not change, and changes here come in
+  bursts, so the run does not release in the middle of one. It bumps
+  `revision` and releases when told the burst is over (the workflow
+  started with `bump` checked), or on its own once `main` has had no
+  change of its own for a week (pin moves and the files the workflows
+  write do not count); otherwise it refuses.
 
 A pin move that leaves every driver byte-identical changes nothing: the
 run confirms the existing release matches and stops.

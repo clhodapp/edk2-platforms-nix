@@ -16,16 +16,19 @@
 #   convergence: the run finds the fresh build differs from the release
 #   under the current version, and, since nothing but flake.lock changed
 #   since that release, bumps `revision` itself. A release follows.
-# - A change to a file this repository authors that changes a driver:
-#   the run fails, since the binaries under a version must not change
-#   and this change is not a pin move. Bumping `revision` by hand and
-#   pushing is what releases it.
+# - A change to a file this repository authors that changes a driver.
+#   Changes here come in bursts, and the binaries under a version must
+#   not change, so the run does not release in the middle of one: it
+#   bumps `revision` when told the burst is over (a dispatch with
+#   `bump`), or once main has had no change of its own for a week
+#   (the weekly run finds it so), and refuses otherwise.
 #
 # Every run: reconcile `edk2` in version.nix with the lock (the weekly
 # run and a dispatch with `advance` first move the pins), build the
 # stable checks, build every released driver as the manifest lists
 # them, then compare with the release under the version's tag: none,
-# create it at this commit; identical, done; different, the rule above.
+# create it at this commit; identical, done; different, the rules
+# above.
 # A commit this workflow pushes (a pin advance, a reconciled version, an
 # automatic bump) carries the workflow's own token, which starts no
 # other run; the release for it is created by the run that pushed it.
@@ -43,6 +46,11 @@ on:
     inputs:
       advance:
         description: Advance the pins (edk2 stable tag, edk2 master, edk2-platforms) as the weekly run does
+        required: false
+        default: false
+        type: boolean
+      bump:
+        description: Release main now if the drivers changed, whatever changed them (the end of a burst of changes)
         required: false
         default: false
         type: boolean
@@ -174,6 +182,10 @@ jobs:
         id: compare
         env:
           GH_TOKEN: ${{ github.token }}
+          BUMP: ${{ inputs.bump == true }}
+          # A burst of changes is over once main has had none for this
+          # long; the weekly run then releases what accumulated.
+          QUIET_DAYS: 7
         run: |
           set -euo pipefail
           version_file=pkgs/edk2-platforms-nix/version.nix
@@ -194,35 +206,47 @@ jobs:
           fi
           diff released.SHA256SUMS artifacts/SHA256SUMS || true
 
-          # What changed since the released commit decides who bumps.
+          # Who bumps. The files the workflows write themselves (the
+          # locks, the version file, the extras status) are not this
+          # repository's own changes; what remains since the released
+          # commit is.
           released=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json targetCommitish --jq .targetCommitish)
-          changed=$(git diff --name-only "$released" HEAD)
-          echo "Changed since $tag ($released):"
-          printf '  %s\n' $changed
-          if [[ "$changed" == "flake.lock" ]]; then
-            revision=$(nix eval --file "$version_file" revision)
-            next=$((revision + 1))
-            echo "Only pins moved; revision $revision becomes $next."
-            sed -i -E "s/^  revision = [0-9]+;/  revision = $next;/" "$version_file"
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add "$version_file"
-            git commit -m "maint: revision $next, the drivers changed under the pin move"
-            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:main
-            # The same bytes under the new name; rebuilt so the artifacts
-            # are the store paths at the commit the release names.
-            rm -rf artifacts
-            mkdir -p artifacts
-            jq -r '.[] | "\(.attr) \(.module) \(.file)"' manifest | while read -r attr module file; do
-              nix build -L -o "result-$attr" ".#$attr"
-              install -m0644 "result-$attr/$module.efi" "artifacts/$file"
-            done
-            (cd artifacts && sha256sum ./*.efi > SHA256SUMS)
-            echo "action=create" >> "$GITHUB_OUTPUT"
-            exit 0
+          own=(-- . ':!flake.lock' ':!tests/dependencies/flake.lock' ":!$version_file" ':!extras/STATUS.md')
+          changed=$(git diff --name-only "$released" HEAD "${own[@]}")
+          echo "Changed since $tag ($released), pins and workflow-written files aside:"
+          while read -r f; do echo "  $f"; done <<<"$changed"
+          last_change=$(git log -1 --format=%ct "${own[@]}")
+          quiet_days=$(( ($(date +%s) - last_change) / 86400 ))
+          if [[ -z "$changed" ]]; then
+            reason="only pins moved"
+          elif [[ "$BUMP" == "true" ]]; then
+            reason="asked to"
+          elif (( quiet_days >= QUIET_DAYS )); then
+            reason="main's last change is $quiet_days days old"
+          else
+            echo "::error::This commit builds drivers that differ from release $tag, and this repository's own files changed since it (last $quiet_days days ago). Start this workflow with \`bump\` checked to release it now; it releases itself once main has had no change for $QUIET_DAYS days."
+            exit 1
           fi
-          echo "::error::This commit builds drivers that differ from release $tag, and the change since it is not only a pin move. Advance \`revision\` in $version_file to release it."
-          exit 1
+
+          revision=$(nix eval --file "$version_file" revision)
+          next=$((revision + 1))
+          echo "Revision $revision becomes $next ($reason)."
+          sed -i -E "s/^  revision = [0-9]+;/  revision = $next;/" "$version_file"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$version_file"
+          git commit -m "maint: revision $next, the drivers changed ($reason)"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:main
+          # The same bytes under the new name; rebuilt so the artifacts
+          # are the store paths at the commit the release names.
+          rm -rf artifacts
+          mkdir -p artifacts
+          jq -r '.[] | "\(.attr) \(.module) \(.file)"' manifest | while read -r attr module file; do
+            nix build -L -o "result-$attr" ".#$attr"
+            install -m0644 "result-$attr/$module.efi" "artifacts/$file"
+          done
+          (cd artifacts && sha256sum ./*.efi > SHA256SUMS)
+          echo "action=create" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
