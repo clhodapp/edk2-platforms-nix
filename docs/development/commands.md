@@ -33,9 +33,11 @@ Releasing after a burst of changes to this repository's own files:
 start the `release` workflow from the Actions tab with "bump" checked.
 It bumps `revision` in `pkgs/edk2-platforms-nix/version.nix`, pushes,
 and publishes the new version in the same run, provided the drivers
-differ from the last release; a week without a change to `main`
-releases them the same way without the button. Editing `revision` by
-hand and pushing still works.
+differ from the last release; the pins are still where that release
+had them, since the weekly advance stands still during a burst, and the
+run then starts the one that advances them again. A week without a
+change to `main` releases the same way without the button. Editing
+`revision` by hand and pushing still works.
 
 Advancing the pins by hand rather than waiting for the weekly run:
 start the `release` workflow from the Actions tab with "advance"
