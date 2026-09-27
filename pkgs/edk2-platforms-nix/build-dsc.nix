@@ -91,7 +91,9 @@ edk2.mkDerivation dsc {
   # ManageabilityPkg/..., MinPlatformPkg/..., AcpiDebugFeaturePkg/...),
   # so the tree and the parents of its package groups are all on the
   # path, the Intel feature categories (Features/Intel/Debugging and
-  # its siblings) included.
+  # its siblings) included. MinPlatformPkg, which every Intel feature
+  # DSC includes from, is under Platform/ (upstream moved it out of
+  # Platform/Intel in April 2026), so Platform/ is on the path too.
   preConfigure =
     let
       intelCategories = lib.attrNames (
@@ -108,6 +110,7 @@ edk2.mkDerivation dsc {
             "${edk2-platforms}/Drivers"
             "${edk2-platforms}/Features"
             "${edk2-platforms}/Features/Intel"
+            "${edk2-platforms}/Platform"
             "${edk2-platforms}/Platform/Intel"
             "${edk2-platforms}/Silicon/Intel"
           ]
