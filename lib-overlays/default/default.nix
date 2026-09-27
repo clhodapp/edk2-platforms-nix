@@ -12,13 +12,16 @@
       # pkgsCross, so a per-package override would leave those at
       # nixpkgs' own edk2.
       #
-      # The tree is used as shipped, without submodules. nixpkgs' recipe
-      # patches its own tree for the GCC5 toolchain (reading the prefix
-      # from the environment) and de-vendors OpenSSL; from
-      # edk2-stable202608 GCC5 is gone and the GCC toolchain reads its
-      # prefix from the environment already (see
-      # pkgs/edk2-platforms-nix/build-dsc.nix), and nothing built this
-      # way uses CryptoPkg. The BaseTools build is the one place a
+      # The tree comes without submodules. nixpkgs' recipe patches its
+      # own tree for the GCC5 toolchain (reading the prefix from the
+      # environment) and de-vendors OpenSSL; from edk2-stable202608 GCC5
+      # is gone and the GCC toolchain reads its prefix from the
+      # environment already (see pkgs/edk2-platforms-nix/build-dsc.nix),
+      # so only the OpenSSL step is repeated here: CryptoPkg's OpensslLib
+      # compiles the OpenSSL sources in place, and the Intel network
+      # feature (TLS) links it, so the openssl submodule's directory is
+      # filled from nixpkgs' OpenSSL source of the same minor version,
+      # as nixpkgs does. The BaseTools build is the one place a
       # submodule is compiled (BrotliCompress, from the brotli tree
       # under MdeModulePkg); no DSC build runs it, so it is left out.
       pkgsWithEdk2 =
@@ -32,7 +35,20 @@
             edk2 = prev.edk2.overrideAttrs (_: {
               version = edk2Version;
               srcWithVendoring = src;
-              inherit src;
+              src = prev.applyPatches {
+                # Named as a fetched tree is, so the workspace unpacks to
+                # "source" as before: the built modules record their
+                # workspace path (the PE debug entry), and a different
+                # name changes the released bytes.
+                name = "source";
+                inherit src;
+                postPatch = ''
+                  rm -rf CryptoPkg/Library/OpensslLib/openssl
+                  mkdir -p CryptoPkg/Library/OpensslLib/openssl
+                  tar --strip-components=1 -C CryptoPkg/Library/OpensslLib/openssl \
+                    -xf ${prev.buildPackages.openssl_3_5.src}
+                '';
+              };
               # The makefile has CRLF line endings, hence the loose pattern.
               postPatch = ''
                 sed -i '/^  BrotliCompress \\/d' BaseTools/Source/C/GNUmakefile

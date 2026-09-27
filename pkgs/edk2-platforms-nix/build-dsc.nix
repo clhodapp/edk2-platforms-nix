@@ -50,6 +50,13 @@ edk2.mkDerivation dsc {
   inherit pname version buildFlags;
 
   buildType = "GCC";
+
+  # nixpkgs' compiler wrapper adds -Wformat -Wformat-security, and
+  # OpensslLib's INF takes -Wformat back; GCC then rejects the leftover
+  # -Wformat-security under -Werror. Warning flags only, no codegen
+  # change (nixpkgs' own edk2 recipe drops the same flag).
+  hardeningDisable = [ "format" ];
+
   env = {
     GCC_BIN = stdenv.cc.targetPrefix;
     GCC_AARCH64_PREFIX = stdenv.cc.targetPrefix;
@@ -69,6 +76,20 @@ edk2.mkDerivation dsc {
   # whose declared include directory is absent, whether or not anything
   # includes from it. Each such directory is created empty.
   postPatch = ''
+    # edk2.mkDerivation links BaseTools to the edk2 store path. A DSC
+    # with structured PCDs makes the build compile PcdValueInit with
+    # BaseTools' own makefiles, which reach MdePkg by a relative path
+    # from BaseTools/Source/C (resolved through the symlink, into the
+    # store) and link the binary into BaseTools/Source/C/bin (read-only
+    # there). A tree of real directories with each file linked gives
+    # both a workspace-relative parent and writable directories (cp
+    # gives the new directories the store's read-only mode; the chmod
+    # skips the symlinks).
+    target=$(readlink BaseTools)
+    rm BaseTools
+    cp -rs "$target" BaseTools
+    chmod -R u+w BaseTools
+
     for dec in $(find . -name '*.dec'); do
       awk '/^\[/ { inc = ($0 ~ /^\[Includes/) } inc && !/^\[/ { print }' "$dec" \
         | sed 's/\r$//; s/#.*//; s/^[[:space:]]*//; s/[[:space:]]*$//' \
