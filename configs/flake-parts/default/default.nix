@@ -16,7 +16,6 @@
 
   debug = false;
   caisson = {
-    configInfo.configName = "edk2-platforms-nix";
     libOverlays.exported = libOverlays: { inherit (libOverlays) default; };
     modules = {
       flake.exported = modules: { inherit (modules) default; };
