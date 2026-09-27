@@ -13,7 +13,10 @@
 # What the jobs build is kept only in this repository's Actions cache,
 # under its own key prefix (the check pipeline budgets against every
 # entry in the repository, so the prefix keeps the two apart), as an
-# on-disk Nix binary cache; nothing is pushed to cachix.
+# on-disk Nix binary cache, one entry per attribute: a run that saved
+# a new entry deletes the attribute's older ones, since an entry is
+# about half a gigabyte and the repository's cache is limited to ten.
+# Nothing is pushed to cachix.
 name: extras
 
 on:
@@ -24,8 +27,10 @@ on:
     - cron: "17 7 * * 2"
   workflow_dispatch:
 
+# Committing the status; deleting the superseded cache entries.
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: extras
@@ -106,10 +111,29 @@ jobs:
           nix copy --to "file://$EXTRAS_CACHE?compression=zstd" "$out"
 
       - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: save
         if: always()
         with:
           path: ${{ env.EXTRAS_CACHE }}
           key: extras-${{ matrix.name }}-${{ github.sha }}
+
+      # Only once the new entry is saved, so the attribute always has
+      # one. An entry under the same key from an earlier run of this
+      # commit is the same content and stays.
+      - name: Drop this attribute's superseded cache entries
+        if: always() && steps.save.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREFIX: extras-${{ matrix.name }}-
+          KEY: extras-${{ matrix.name }}-${{ github.sha }}
+        run: |
+          set -euo pipefail
+          gh cache list --repo "$GITHUB_REPOSITORY" --key "$PREFIX" --limit 100 --json id,key \
+            --jq ".[] | select(.key != \"$KEY\") | \"\(.id) \(.key)\"" \
+          | while read -r id key; do
+              echo "Deleting $key"
+              gh cache delete "$id" --repo "$GITHUB_REPOSITORY"
+            done
 
       - name: Record the outcome
         if: always()
@@ -149,8 +173,8 @@ jobs:
             echo
             echo "| Attribute | Outcome |"
             echo "|---|---|"
-            for f in $(ls outcomes | sort); do
-              read -r name outcome < "outcomes/$f"
+            for f in outcomes/*; do
+              read -r name outcome < "$f"
               echo "| \`$name\` | $outcome |"
             done
           } > extras/STATUS.md
