@@ -61,7 +61,7 @@
     inputs@{ caisson, ... }:
     let
       lib = caisson.lib.caisson-core.mkLib {
-        inherit inputs;
+        inherit (caisson.lib.caisson-core.pins.flake inputs) sources root;
         namespace = "edk2-platforms-nix";
         systems = [ "x86_64-linux" ];
 
