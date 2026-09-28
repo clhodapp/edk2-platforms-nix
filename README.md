@@ -119,7 +119,7 @@ platform trusts, for example
 `sbsign --key db.key --cert db.crt --output ext4_x64.efi ext4_x64.efi`;
 an unsigned driver is skipped.
 
-With Nix: `overlays.packages` is a plain nixpkgs overlay adding the
+With Nix: `overlays.default` is a plain nixpkgs overlay adding the
 packages under `pkgs.edk2-platforms-nix.*`, and
 `packages.x86_64-linux.*` holds the same builds.
 
