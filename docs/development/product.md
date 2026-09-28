@@ -53,10 +53,19 @@ each. Three things move the version:
   The run finds the fresh build differs from the release under the
   current version and, because nothing but `flake.lock` changed since
   that release, bumps `revision` itself. A release follows.
-- A file this repository authors changes and a driver changes. The run
-  fails: the binaries under a version must not change, and the change
-  is not a pin move. Bumping `revision` by hand and pushing is what
-  releases it.
+- A file this repository authors changes and a driver changes. The
+  binaries under a version must not change, and changes here come in
+  bursts, so the run does not release in the middle of one, and it
+  does not advance the pins while one is in progress: what a burst
+  changed is released against the same upstream as the release before
+  it. It bumps `revision` and releases when told the burst is over
+  (the workflow started with `bump` checked), or on its own once `main`
+  has had no change of its own for a week (pin moves and the files the
+  workflows write do not count); otherwise it refuses. After the
+  burst-end release it starts the run that advances the pins again, so
+  tracking upstream resumes at once. A burst that moves the edk2 tag
+  itself is a new series: the version follows the lock and
+  `v<newtag>.0` is created on that push.
 
 A pin move that leaves every driver byte-identical changes nothing: the
 run confirms the existing release matches and stops.

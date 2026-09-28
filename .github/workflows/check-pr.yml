@@ -181,6 +181,12 @@ jobs:
           for prdir in "$roots"/pr/*/; do
             n=$(basename "$prdir")
             newest=$(newest_in "$prdir" | head -n1)
+            # A pull request whose last build was dropped by an earlier
+            # run's step 5 has an empty directory left; it roots nothing.
+            if [[ -z "$newest" ]]; then
+              rm -rf "$prdir"
+              continue
+            fi
             for sha in "$prdir"/*/; do
               [[ "$(basename "$sha")" == "$newest" ]] || rm -rf "$sha"
             done

@@ -60,10 +60,15 @@ every push to `main` and weekly, and three things move the version:
   from the release under the current version and, since only
   `flake.lock` changed, bumps `revision` itself and releases the whole
   batch again.
-- A file in this repository changes and a driver changes. The run
-  fails rather than publish different bytes under an existing version;
-  bumping `revision` in `pkgs/edk2-platforms-nix/version.nix` by hand
-  and pushing releases it.
+- A file in this repository changes and a driver changes. Changes here
+  come in bursts, and the run does not publish different bytes under an
+  existing version in the middle of one, nor advance the pins: what a
+  burst changed is released against the same upstream as the release
+  before it. It bumps `revision` and releases when started
+  from the Actions tab with "bump" checked (the burst is over), or on
+  its own once `main` has had no change of its own for a week; until
+  then it refuses. After that release the pins advance again. A burst
+  that moves the edk2 tag itself starts a new series at once.
 
 A pin move that leaves every driver byte-identical releases nothing.
 Each release's notes name the exact edk2, edk2-platforms, and nixpkgs

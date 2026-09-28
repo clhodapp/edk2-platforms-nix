@@ -16,16 +16,25 @@
 #   convergence: the run finds the fresh build differs from the release
 #   under the current version, and, since nothing but flake.lock changed
 #   since that release, bumps `revision` itself. A release follows.
-# - A change to a file this repository authors that changes a driver:
-#   the run fails, since the binaries under a version must not change
-#   and this change is not a pin move. Bumping `revision` by hand and
-#   pushing is what releases it.
+# - A change to a file this repository authors that changes a driver.
+#   Changes here come in bursts, and the binaries under a version must
+#   not change, so the run does not release in the middle of one, and
+#   it does not advance the pins either: the burst's changes are
+#   released against the same upstream as the release before them.
+#   The run bumps `revision` when told the burst is over (a dispatch
+#   with `bump`) or once main has had no change of its own for a week
+#   (the weekly run finds it so), refuses otherwise, and after the
+#   burst-end release starts the run that advances the pins again.
+#   A burst that moves the edk2 tag itself is a new series: the
+#   version follows the lock and `v<newtag>.0` is created at once.
 #
-# Every run: reconcile `edk2` in version.nix with the lock (the weekly
-# run and a dispatch with `advance` first move the pins), build the
-# stable checks, build every released driver as the manifest lists
-# them, then compare with the release under the version's tag: none,
-# create it at this commit; identical, done; different, the rule above.
+# Every run: find the release under the version and whether this
+# repository's own files changed since it, advance the pins unless
+# they did (the weekly run and a dispatch with `advance`), reconcile
+# `edk2` in version.nix with the lock, build the stable checks, build
+# every released driver as the manifest lists them, then compare with
+# the release under the version's tag: none, create it at this commit;
+# identical, done; different, the rules above.
 # A commit this workflow pushes (a pin advance, a reconciled version, an
 # automatic bump) carries the workflow's own token, which starts no
 # other run; the release for it is created by the run that pushed it.
@@ -46,10 +55,17 @@ on:
         required: false
         default: false
         type: boolean
+      bump:
+        description: Release main now if the drivers changed, whatever changed them (the end of a burst of changes)
+        required: false
+        default: false
+        type: boolean
 
-# Pushing the reconciled version and creating the release.
+# Pushing the reconciled version and creating the release; starting
+# the run that resumes tracking upstream after a burst.
 permissions:
   contents: write
+  actions: write
 
 # Runs serialize: two at once could both find the tag missing.
 concurrency:
@@ -88,10 +104,50 @@ jobs:
           skipPush: true
           extraPullNames: nix-community,numtide
 
+      # The release under the version in version.nix, and whether this
+      # repository's own files changed since it. The files the workflows
+      # write themselves (the locks, the version file, the extras
+      # status) are not its own changes. Own changes since a release
+      # mean a burst of work is in progress: the drivers under that
+      # version must not change, so nothing can be released until the
+      # burst ends, and the pins stay where the release has them.
+      - name: Find the release under this version and what changed since it
+        id: since
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version_file=pkgs/edk2-platforms-nix/version.nix
+          own=(-- . ':!flake.lock' ':!tests/dependencies/flake.lock' ":!$version_file" ':!extras/STATUS.md')
+          tag="v$(nix eval --raw --file "$version_file" edk2).$(nix eval --file "$version_file" revision)"
+          released=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json targetCommitish --jq .targetCommitish 2>/dev/null || true)
+          changed=""
+          if [[ -n "$released" ]]; then
+            changed=$(git diff --name-only "$released" HEAD "${own[@]}")
+          fi
+          last_change=$(git log -1 --format=%ct "${own[@]}")
+          quiet_days=$(( ($(date +%s) - last_change) / 86400 ))
+          if [[ -z "$released" ]]; then
+            echo "No release $tag yet."
+          elif [[ -z "$changed" ]]; then
+            echo "Release $tag is at $released; nothing of this repository's own changed since."
+          else
+            echo "Release $tag is at $released; this repository's own files changed since (last $quiet_days days ago):"
+            while read -r f; do echo "  $f"; done <<<"$changed"
+          fi
+          {
+            echo "tag=$tag"
+            echo "released=$released"
+            echo "locked=$([[ -n "$changed" ]] && echo true || echo false)"
+            echo "quiet_days=$quiet_days"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Advance the pins, then reconcile the version with the lock
         env:
           GH_TOKEN: ${{ github.token }}
           ADVANCE: ${{ github.event_name == 'schedule' || inputs.advance == true }}
+          LOCKED: ${{ steps.since.outputs.locked }}
+          TAG: ${{ steps.since.outputs.tag }}
         run: |
           set -euo pipefail
           version_file=pkgs/edk2-platforms-nix/version.nix
@@ -100,6 +156,11 @@ jobs:
           locked_edk2() {
             jq -r '.nodes."edk2-src".original.ref' flake.lock | sed -E 's|^refs/tags/edk2-stable||'
           }
+
+          if [[ "$ADVANCE" == "true" && "$LOCKED" == "true" ]]; then
+            echo "::notice::Not advancing the pins: this repository's own files changed since release $TAG, so the drivers cannot be released until that burst ends (start this workflow with \`bump\`, or leave main unchanged for a week). The pins stay where the release has them until then."
+            ADVANCE=false
+          fi
 
           if [[ "$ADVANCE" == "true" ]]; then
             latest=$(git ls-remote --tags https://github.com/tianocore/edk2 'refs/tags/edk2-stable*' \
@@ -174,6 +235,13 @@ jobs:
         id: compare
         env:
           GH_TOKEN: ${{ github.token }}
+          BUMP: ${{ inputs.bump == true }}
+          RELEASED: ${{ steps.since.outputs.released }}
+          LOCKED: ${{ steps.since.outputs.locked }}
+          QUIET_DAYS_SO_FAR: ${{ steps.since.outputs.quiet_days }}
+          # A burst of changes is over once main has had none for this
+          # long; the weekly run then releases what accumulated.
+          QUIET_DAYS: 7
         run: |
           set -euo pipefail
           version_file=pkgs/edk2-platforms-nix/version.nix
@@ -194,35 +262,48 @@ jobs:
           fi
           diff released.SHA256SUMS artifacts/SHA256SUMS || true
 
-          # What changed since the released commit decides who bumps.
-          released=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json targetCommitish --jq .targetCommitish)
-          changed=$(git diff --name-only "$released" HEAD)
-          echo "Changed since $tag ($released):"
-          printf '  %s\n' $changed
-          if [[ "$changed" == "flake.lock" ]]; then
-            revision=$(nix eval --file "$version_file" revision)
-            next=$((revision + 1))
-            echo "Only pins moved; revision $revision becomes $next."
-            sed -i -E "s/^  revision = [0-9]+;/  revision = $next;/" "$version_file"
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add "$version_file"
-            git commit -m "maint: revision $next, the drivers changed under the pin move"
-            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:main
-            # The same bytes under the new name; rebuilt so the artifacts
-            # are the store paths at the commit the release names.
-            rm -rf artifacts
-            mkdir -p artifacts
-            jq -r '.[] | "\(.attr) \(.module) \(.file)"' manifest | while read -r attr module file; do
-              nix build -L -o "result-$attr" ".#$attr"
-              install -m0644 "result-$attr/$module.efi" "artifacts/$file"
-            done
-            (cd artifacts && sha256sum ./*.efi > SHA256SUMS)
-            echo "action=create" >> "$GITHUB_OUTPUT"
-            exit 0
+          # Who bumps: the run, when only pins moved since the released
+          # commit; otherwise a burst of this repository's own changes
+          # is in progress, and the run bumps when told the burst is
+          # over or when main has been quiet for long enough, and
+          # refuses in the middle of one. (The release and what changed
+          # since it were found before the pins were advanced; the pins
+          # are not advanced during a burst.)
+          echo "Release $tag is at $RELEASED."
+          burst_ended=false
+          if [[ "$LOCKED" != "true" ]]; then
+            reason="only pins moved"
+          elif [[ "$BUMP" == "true" ]]; then
+            reason="asked to"
+            burst_ended=true
+          elif (( QUIET_DAYS_SO_FAR >= QUIET_DAYS )); then
+            reason="main's last change is $QUIET_DAYS_SO_FAR days old"
+            burst_ended=true
+          else
+            echo "::error::This commit builds drivers that differ from release $tag, and this repository's own files changed since it (last $QUIET_DAYS_SO_FAR days ago). Start this workflow with \`bump\` checked to release it now; it releases itself once main has had no change for $QUIET_DAYS days."
+            exit 1
           fi
-          echo "::error::This commit builds drivers that differ from release $tag, and the change since it is not only a pin move. Advance \`revision\` in $version_file to release it."
-          exit 1
+          echo "burst_ended=$burst_ended" >> "$GITHUB_OUTPUT"
+
+          revision=$(nix eval --file "$version_file" revision)
+          next=$((revision + 1))
+          echo "Revision $revision becomes $next ($reason)."
+          sed -i -E "s/^  revision = [0-9]+;/  revision = $next;/" "$version_file"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$version_file"
+          git commit -m "maint: revision $next, the drivers changed ($reason)"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:main
+          # The same bytes under the new name; rebuilt so the artifacts
+          # are the store paths at the commit the release names.
+          rm -rf artifacts
+          mkdir -p artifacts
+          jq -r '.[] | "\(.attr) \(.module) \(.file)"' manifest | while read -r attr module file; do
+            nix build -L -o "result-$attr" ".#$attr"
+            install -m0644 "result-$attr/$module.efi" "artifacts/$file"
+          done
+          (cd artifacts && sha256sum ./*.efi > SHA256SUMS)
+          echo "action=create" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -262,3 +343,14 @@ jobs:
             artifacts/*.efi \
             artifacts/SHA256SUMS
           echo "::notice::Created release $tag at $commit."
+
+      # The burst is over and its changes are released at the pins the
+      # burst kept, so tracking upstream resumes now rather than at the
+      # next weekly run: the next run advances the pins and, if any
+      # driver changed under them, releases again. A workflow_dispatch
+      # is the one event the workflow's own token does start.
+      - name: Resume tracking upstream
+        if: steps.compare.outputs.burst_ended == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" -f advance=true
