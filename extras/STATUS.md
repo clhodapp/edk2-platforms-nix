@@ -1,6 +1,6 @@
 # Extras build status
 
-Written by extras.yml for commit `b138bdce5f8b`; each attribute is `extras.x86_64-linux.<name>`.
+Written by extras.yml for commit `ebf3a78a1b93`; each attribute is `extras.x86_64-linux.<name>`.
 
 | Attribute | Outcome |
 |---|---|
