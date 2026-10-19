@@ -19,5 +19,5 @@
 # bump this.
 {
   edk2 = "202608";
-  revision = 1;
+  revision = 2;
 }
