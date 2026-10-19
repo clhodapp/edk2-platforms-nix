@@ -76,7 +76,7 @@
         "narHash": "sha256-HjCT0Sp1U5PeY4g1xkszhQQMIKhShK958iRTomk4l3U=",
         "ref": "refs/heads/master",
         "rev": "1e1fb123c84b5898bbb3cca127f97ab1c237bccd",
-        "revCount": 36985,
+        "shallow": true,
         "type": "git",
         "url": "https://github.com/tianocore/edk2"
       },
