@@ -72,11 +72,11 @@
     "edk2-unstable-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1792449169,
-        "narHash": "sha256-Q2/raxZbgKlt2WVSWK+Qhi4xhCg4RrysmYgdqBbXkHs=",
+        "lastModified": 1792485347,
+        "narHash": "sha256-EMpvbsfb23/5Ceixc8GWFBNGKsbTEsNQVQzviQ7wb1c=",
         "ref": "refs/heads/master",
-        "rev": "03fd4a5b397d18f8653e148900e382e44cac53ef",
-        "revCount": 36992,
+        "rev": "4208d71daba23f014b78b73d1b88c53682f6d247",
+        "shallow": true,
         "type": "git",
         "url": "https://github.com/tianocore/edk2"
       },
