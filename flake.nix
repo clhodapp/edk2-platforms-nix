@@ -62,6 +62,7 @@
     let
       lib = caisson.lib.caisson.mkLib {
         inherit (caisson.lib.caisson.pins.flake inputs) sources root;
+        defaultEcosystemSrc = sources: { nixpkgs-lib = sources.nixpkgs; };
         name = "edk2-platforms-nix";
         systems = [ "x86_64-linux" ];
 
