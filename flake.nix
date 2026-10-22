@@ -31,8 +31,11 @@
     # Only the toolchain and the edk2 package recipe (BaseTools build,
     # source de-vendoring) come from here; the edk2 trees are pinned below.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+    # The library comes from the nixpkgs.lib mirror. The package sets
+    # take nixpkgs.
+    nixpkgs-lib.url = "github:nix-community/nixpkgs.lib";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
+    flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs-lib";
 
     # The edk2 core the released driver is built against, at a stable
     # tag; the tag is the driver's upstream version (see
