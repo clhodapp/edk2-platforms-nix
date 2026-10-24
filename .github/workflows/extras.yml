@@ -2,21 +2,23 @@
 #
 # Builds the `extras` (see configs/flake/edk2-platforms-nix/extras.nix):
 # edk2-platforms packages this repository carries as pinned Nix
-# expressions but does not release. Each is its own job and may fail
+# expressions but does not release. Each feature is built twice, against
+# the edk2 stable tag (`<name>`) and against edk2 master
+# (`<name>-unstable`), each in its own job, and any job may fail
 # without failing the run, since a feature package that stops building
-# at a new edk2 tag is a fact to record, not a reason to hold the
-# drivers; the outcome of every attribute is written to extras/STATUS.md
-# on main. Runs on the same pushes as release.yml and after the weekly
-# pin advance, in a separate workflow so the check pipeline and the
-# release stay as fast as they are.
+# is a fact to record, not a reason to hold the drivers. The outcome of
+# every attribute is written to extras/STATUS.md on main, and
+# extras/last-good.json moves each attribute that built to this commit
+# (`extras-last-good` reads it). Runs on the same pushes as release.yml
+# and after the weekly pin advance, in a separate workflow so the check
+# pipeline and the release stay as fast as they are.
 #
-# What the jobs build is kept only in this repository's Actions cache,
-# under its own key prefix (the check pipeline budgets against every
-# entry in the repository, so the prefix keeps the two apart), as an
-# on-disk Nix binary cache, one entry per attribute: a run that saved
-# a new entry deletes the attribute's older ones, since an entry is
-# about half a gigabyte and the repository's cache is limited to ten.
-# Nothing is pushed to cachix.
+# A build's outcome is a function of its derivation, so a job first
+# looks for a marker of a successful build of the same derivation in
+# this repository's Actions cache and builds only when there is none.
+# The markers are a few bytes each, under their own key prefix; the
+# build outputs themselves are kept nowhere, and nothing is pushed to
+# cachix.
 name: extras
 
 on:
@@ -27,7 +29,7 @@ on:
     - cron: "17 7 * * 2"
   workflow_dispatch:
 
-# Committing the status; deleting the superseded cache entries.
+# Committing the status; deleting the superseded markers.
 permissions:
   contents: write
   actions: write
@@ -51,9 +53,11 @@ jobs:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
           extra_nix_config: |
             experimental-features = nix-command flakes
+      # The features, by their stable names; the core is the matrix's
+      # other dimension.
       - id: names
         run: |
-          names=$(nix eval --json '.#extras.x86_64-linux' --apply builtins.attrNames)
+          names=$(nix eval --json '.#extras.x86_64-linux' --apply builtins.attrNames | jq -c 'map(select(endswith("-unstable") | not))')
           echo "names=$names" >> "$GITHUB_OUTPUT"
           echo "$names"
 
@@ -66,23 +70,13 @@ jobs:
       fail-fast: false
       matrix:
         name: ${{ fromJSON(needs.list.outputs.names) }}
+        core: [stable, unstable]
     env:
-      EXTRAS_CACHE: /home/runner/extras-cache
+      ATTR: ${{ matrix.name }}${{ matrix.core == 'unstable' && '-unstable' || '' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-
-      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ${{ env.EXTRAS_CACHE }}
-          key: extras-${{ matrix.name }}-${{ github.sha }}
-          restore-keys: extras-${{ matrix.name }}-
-
-      - name: Prepare the cache
-        run: |
-          mkdir -p "$EXTRAS_CACHE/nar"
-          [[ -e "$EXTRAS_CACHE/nix-cache-info" ]] || echo "StoreDir: /nix/store" > "$EXTRAS_CACHE/nix-cache-info"
 
       - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
         with:
@@ -90,7 +84,6 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
             sandbox = true
-            extra-substituters = file://${{ env.EXTRAS_CACHE }}?trusted=true
 
       # Pull from the clhodapp cache (the toolchain and BaseTools main's
       # check run built); nothing is pushed there from here.
@@ -100,32 +93,56 @@ jobs:
           skipPush: true
           extraPullNames: nix-community,numtide
 
-      - name: Build
-        id: build
+      - name: Find the derivation
+        id: drv
         run: |
           set -euo pipefail
-          out=$(nix build --print-build-logs --no-link --print-out-paths ".#extras.x86_64-linux.${{ matrix.name }}")
-          echo "$out"
-          # The output and its closure, less what cache.nixos.org serves,
-          # into the on-disk cache for the next run.
-          nix copy --to "file://$EXTRAS_CACHE?compression=zstd" "$out"
+          drv=$(nix eval --raw ".#extras.x86_64-linux.$ATTR.drvPath")
+          edk2=$(nix eval --raw ".#extras.x86_64-linux.$ATTR.edk2Version")
+          hash=$(basename "$drv")
+          {
+            echo "drv=$drv"
+            echo "edk2=$edk2"
+            echo "key=extras/$ATTR/${hash%%-*}"
+          } >> "$GITHUB_OUTPUT"
+          echo "$drv against edk2 $edk2"
 
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: marker
+        with:
+          path: built
+          key: ${{ steps.drv.outputs.key }}
+          lookup-only: true
+
+      - name: Build
+        id: build
+        if: steps.marker.outputs.cache-hit != 'true'
+        env:
+          DRV: ${{ steps.drv.outputs.drv }}
+        run: nix build --print-build-logs --no-link "$DRV^*"
+
+      - name: Mark the derivation built
+        if: steps.build.outcome == 'success'
+        env:
+          DRV: ${{ steps.drv.outputs.drv }}
+        run: |
+          mkdir -p built
+          echo "$DRV" > built/drv
       - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         id: save
-        if: always()
+        if: steps.build.outcome == 'success'
         with:
-          path: ${{ env.EXTRAS_CACHE }}
-          key: extras-${{ matrix.name }}-${{ github.sha }}
+          path: built
+          key: ${{ steps.drv.outputs.key }}
 
-      # Only once the new entry is saved, so the attribute always has
-      # one. An entry under the same key from an earlier run of this
-      # commit is the same content and stays.
-      - name: Drop this attribute's superseded cache entries
-        if: always() && steps.save.outcome == 'success'
+      # A marker for an older derivation of this attribute is never
+      # looked up again.
+      - name: Drop this attribute's superseded markers
+        if: steps.save.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
-          PREFIX: extras-${{ matrix.name }}-
-          KEY: extras-${{ matrix.name }}-${{ github.sha }}
+          PREFIX: extras/${{ env.ATTR }}/
+          KEY: ${{ steps.drv.outputs.key }}
         run: |
           set -euo pipefail
           gh cache list --repo "$GITHUB_REPOSITORY" --key "$PREFIX" --limit 100 --json id,key \
@@ -137,54 +154,103 @@ jobs:
 
       - name: Record the outcome
         if: always()
+        env:
+          NAME: ${{ matrix.name }}
+          CORE: ${{ matrix.core }}
+          EDK2: ${{ steps.drv.outputs.edk2 }}
+          # The build is skipped on a marker, and also when the
+          # attribute does not evaluate, which is a failure.
+          OUTCOME: ${{ steps.marker.outputs.cache-hit == 'true' && 'success' || steps.build.outcome == 'skipped' && 'failure' || steps.build.outcome }}
         run: |
           mkdir -p outcome
-          echo "${{ matrix.name }} ${{ steps.build.outcome }}" > "outcome/${{ matrix.name }}"
+          jq -n --arg name "$NAME" --arg core "$CORE" --arg attr "$ATTR" --arg edk2 "$EDK2" --arg outcome "$OUTCOME" \
+            '{name: $name, core: $core, attr: $attr, edk2Version: $edk2, outcome: $outcome}' > "outcome/$ATTR.json"
+          cat "outcome/$ATTR.json"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: outcome-${{ matrix.name }}
+          name: outcome-${{ env.ATTR }}
           path: outcome/
 
+  # On main only: on any other branch the push below would rebase that
+  # branch onto main and push it there. A run started on another
+  # branch tests the builds and records nothing.
   status:
     needs: build
-    if: always() && github.event_name != 'pull_request'
+    if: always() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+          # The push below rebases onto a newer main when it has moved.
+          fetch-depth: 0
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: outcome-*
           path: outcomes
           merge-multiple: true
-      - name: Write extras/STATUS.md
+      - name: Write extras/last-good.json and extras/STATUS.md
+        run: |
+          set -euo pipefail
+          mkdir -p extras
+          jq -s . outcomes/*.json > "$RUNNER_TEMP/outcomes.json"
+          last_good=extras/last-good.json
+          [[ -e "$last_good" ]] || echo '{}' > "$last_good"
+
+          # Every attribute that built moves to this commit; the others
+          # keep the commit they last built at.
+          jq --slurpfile all "$RUNNER_TEMP/outcomes.json" \
+            --arg flake "github:$GITHUB_REPOSITORY/$GITHUB_SHA" --arg commit "$GITHUB_SHA" '
+              reduce ($all[0][] | select(.outcome == "success")) as $o (.;
+                .["x86_64-linux"][$o.attr] = {flake: $flake, commit: $commit, edk2Version: $o.edk2Version})
+            ' "$last_good" > "$RUNNER_TEMP/last-good.json"
+          mv "$RUNNER_TEMP/last-good.json" "$last_good"
+
+          jq -r --slurpfile lg "$last_good" --arg sha "${GITHUB_SHA:0:12}" '
+            def version(core): (map(select(.core == core)) | first | .edk2Version) // "unknown";
+            def cell(o):
+              if o == null then "not built"
+              elif o.outcome == "success" then "success"
+              else ($lg[0]["x86_64-linux"][o.attr].commit // null) as $c
+                | o.outcome + (if $c then ", last built at `\($c[0:12])`" else ", never built" end)
+              end;
+            . as $all
+            | "# Extras build status",
+              "",
+              "Written by extras.yml for commit `\($sha)`. Each feature is built against the edk2 stable tag as `extras.x86_64-linux.<name>` (edk2 \($all | version("stable"))) and against edk2 master as `extras.x86_64-linux.<name>-unstable` (edk2 \($all | version("unstable"))). A failure names the commit at which the attribute last built, and `extras-last-good.x86_64-linux.<attribute>` builds it from that commit.",
+              "",
+              "| Feature | Stable | Unstable |",
+              "|---|---|---|",
+              (group_by(.name)[]
+                | (map(select(.core == "stable")) | first) as $s
+                | (map(select(.core == "unstable")) | first) as $u
+                | "| `\(.[0].name)` | \(cell($s)) | \(cell($u)) |")
+          ' "$RUNNER_TEMP/outcomes.json" > extras/STATUS.md
+          cat extras/STATUS.md
+      # Only this workflow writes extras/, and one run of it at a time,
+      # so a rebase onto a main that moved since the checkout (a release
+      # run's revision commit, a pin move) cannot conflict.
+      - name: Commit and push
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir -p extras
-          {
-            echo "# Extras build status"
-            echo
-            echo "Written by extras.yml for commit \`${GITHUB_SHA:0:12}\`; each attribute is \`extras.x86_64-linux.<name>\`."
-            echo
-            echo "| Attribute | Outcome |"
-            echo "|---|---|"
-            for f in outcomes/*; do
-              read -r name outcome < "$f"
-              echo "| \`$name\` | $outcome |"
-            done
-          } > extras/STATUS.md
-          cat extras/STATUS.md
-          if git diff --quiet -- extras/STATUS.md && [[ -z "$(git status --porcelain extras/STATUS.md)" ]]; then
+          if [[ -z "$(git status --porcelain extras)" ]]; then
             echo "The status is unchanged."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add extras/STATUS.md
+          git add extras/STATUS.md extras/last-good.json
           git commit -m "maint(extras): build status for ${GITHUB_SHA:0:12}"
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:main
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}"
+          for attempt in 1 2 3 4 5; do
+            if git push "$remote" HEAD:main; then
+              exit 0
+            fi
+            echo "Push attempt $attempt was rejected; rebasing onto main."
+            git pull --rebase "$remote" main
+          done
+          exit 1

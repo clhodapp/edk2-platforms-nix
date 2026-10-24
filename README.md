@@ -107,6 +107,15 @@ as a pinned, known-to-build expression, so they are
 pushed to cachix. `nix build .#extras.x86_64-linux.intel-acpi-debug-feature`
 builds one; the output is the whole `Build` tree.
 
+edk2-platforms has no stable tags, and its master can depend on edk2
+changes made after the edk2 stable tag the drivers are built against.
+Each extra is therefore also built against edk2 master, as
+`extras.x86_64-linux.<name>-unstable`. The workflow records the commit
+of this repository at which each attribute last built in
+`extras/last-good.json`, and moves that record only to a commit at
+which the attribute builds; `extras-last-good.x86_64-linux.<attribute>`
+builds the attribute from the recorded commit.
+
 The builder itself is `lib.edk2-platforms-nix.buildDsc`: given a
 package set, an edk2 tree, an edk2-platforms tree, and a target
 architecture, it returns a function that builds any DSC on the

@@ -107,7 +107,8 @@ jobs:
       # The release under the version in version.nix, and whether this
       # repository's own files changed since it. The files the workflows
       # write themselves (the locks, the version file, the extras
-      # status) are not its own changes. Own changes since a release
+      # status and last-good record under extras/) are not its own
+      # changes. Own changes since a release
       # mean a burst of work is in progress: the drivers under that
       # version must not change, so nothing can be released until the
       # burst ends, and the pins stay where the release has them.
@@ -118,7 +119,7 @@ jobs:
         run: |
           set -euo pipefail
           version_file=pkgs/edk2-platforms-nix/version.nix
-          own=(-- . ':!flake.lock' ':!tests/dependencies/flake.lock' ":!$version_file" ':!extras/STATUS.md')
+          own=(-- . ':!flake.lock' ':!tests/dependencies/flake.lock' ":!$version_file" ':!extras')
           tag="v$(nix eval --raw --file "$version_file" edk2).$(nix eval --file "$version_file" revision)"
           released=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json targetCommitish --jq .targetCommitish 2>/dev/null || true)
           changed=""
