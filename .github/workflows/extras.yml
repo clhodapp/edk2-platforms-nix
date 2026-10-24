@@ -172,9 +172,12 @@ jobs:
           name: outcome-${{ env.ATTR }}
           path: outcome/
 
+  # On main only: on any other branch the push below would rebase that
+  # branch onto main and push it there. A run started on another
+  # branch tests the builds and records nothing.
   status:
     needs: build
-    if: always() && github.event_name != 'pull_request'
+    if: always() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
