@@ -95,10 +95,21 @@ builds (`configs/flake/edk2-platforms-nix/extras.nix`). They live outside
 `packages` and `checks` because the fleet's check pipeline builds every
 attribute of both and fails on any, and a feature package that stops
 building at a new edk2 tag must not turn every pull request red or
-hold a release. `extras.yml` builds each in its own job, records the
-outcome of every attribute in `extras/STATUS.md` on main, keeps what it
-built in the repository's Actions cache only, and pushes nothing to
-cachix.
+hold a release. Each feature is built against the edk2 stable tag as
+`<name>` and against edk2 master as `<name>-unstable`, because
+edk2-platforms has no stable tags and its master may already need edk2
+changes made after the tag. `extras.yml` builds each attribute in its
+own job and records the outcome of every attribute in
+`extras/STATUS.md` on main. It keeps a marker of each successful
+derivation in the repository's Actions cache, so an unchanged
+derivation is not built again, and pushes nothing to cachix.
+
+`extras/last-good.json` holds, for each attribute, the commit of this
+repository at which it last built, and the workflow moves an entry only
+to a commit at which the attribute builds.
+`extras-last-good.<system>.<name>` evaluates the flake at that commit
+with `builtins.getFlake`, so it gives back the derivation that built,
+with the pins and the builder of that commit.
 
 ## Deployment
 

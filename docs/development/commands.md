@@ -17,8 +17,11 @@ nix build .#ftdi-usb-serial-aarch64
 nix build .#release-manifest -o manifest && cat manifest
 nix eval --raw .#ext4-dxe.version
 
-# Build an extra (the output is the whole edk2 Build tree)
+# Build an extra (the output is the whole edk2 Build tree), against
+# the edk2 stable tag, against edk2 master, and as it last built
 nix build .#extras.x86_64-linux.intel-acpi-debug-feature
+nix build .#extras.x86_64-linux.intel-acpi-debug-feature-unstable
+nix build .#extras-last-good.x86_64-linux.intel-acpi-debug-feature
 ```
 
 Adding a drop-in: a file `pkgs/edk2-platforms-nix/<name>/default.nix`
