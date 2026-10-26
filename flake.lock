@@ -7,11 +7,11 @@
         "nixpkgs-lib": "nixpkgs-lib"
       },
       "locked": {
-        "lastModified": 1792652282,
-        "narHash": "sha256-NSGYjLGkenMS4HPc0k+D0ToF0QVLMP2vcspcU4rS1x4=",
+        "lastModified": 1793002175,
+        "narHash": "sha256-b36kCQe3AInQDbuWix7vUDPRdJvR2WaY8Y+58yygAek=",
         "owner": "nix-caisson",
         "repo": "caisson",
-        "rev": "4bf4270a5fc5ed4aefcccb11a61b2db453e56a32",
+        "rev": "175939c9de6a4f28ac706f8fdb106693bd52b4bb",
         "type": "github"
       },
       "original": {
@@ -22,11 +22,11 @@
     },
     "caisson-core": {
       "locked": {
-        "lastModified": 1792651257,
-        "narHash": "sha256-5SMkHLn3uyGkzCl6/VAxLoZ08fRlq9lrhD0JbuO8eUI=",
+        "lastModified": 1792912516,
+        "narHash": "sha256-VRfoenyzsVr2fnxWJHXM4NvngUwWbbKldNg5sJkyXxA=",
         "owner": "nix-caisson",
         "repo": "caisson-core",
-        "rev": "9e1bdf63c237d6559bd4291688ae992a9933f67e",
+        "rev": "8f60ad78c9ad0980d61a87983fd13227038a2f8d",
         "type": "github"
       },
       "original": {
@@ -38,11 +38,11 @@
     "edk2-platforms": {
       "flake": false,
       "locked": {
-        "lastModified": 1792191582,
-        "narHash": "sha256-vMiYzf6lmbl7C07aTLSTvKr4pCWMz4g9JcKF8QubIJo=",
+        "lastModified": 1792816767,
+        "narHash": "sha256-5IGmlbldwZ31B+bVEg6xgQ/4HpLcRV+5fkmlUMrSJaM=",
         "owner": "tianocore",
         "repo": "edk2-platforms",
-        "rev": "1c500d13a653cf0f556ecf7ce703c12874247efc",
+        "rev": "0dcb570f7767f3d9e47fb1d00fa22a5aaf982a40",
         "type": "github"
       },
       "original": {
@@ -72,11 +72,11 @@
     "edk2-unstable-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1792485347,
-        "narHash": "sha256-EMpvbsfb23/5Ceixc8GWFBNGKsbTEsNQVQzviQ7wb1c=",
+        "lastModified": 1793008195,
+        "narHash": "sha256-oD2bmRJyyoXz3FEU5O0N7v2f0tciUaWwo3vczf1tBEE=",
         "ref": "refs/heads/master",
-        "rev": "4208d71daba23f014b78b73d1b88c53682f6d247",
-        "shallow": true,
+        "rev": "a9a4df268aa61c8d4bd9710d793fd1dbc32d3c8a",
+        "revCount": 37068,
         "type": "git",
         "url": "https://github.com/tianocore/edk2"
       },
@@ -130,11 +130,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1792422028,
-        "narHash": "sha256-qVt97ILUu2DorFGGEi+mqVuzOF8R18fQLgFkHiLrNfE=",
+        "lastModified": 1792898606,
+        "narHash": "sha256-Mg3rRjsbMqhSMxop5PYMXos8SwAjejrxSgVThTvP9eg=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "f3a73bcf5d1c5b75a66cf35a48957e30d41d647a",
+        "rev": "1f607aa79b6356ed45d3cd3c8079c196e79efa2c",
         "type": "github"
       },
       "original": {
@@ -161,11 +161,11 @@
     },
     "nixpkgs-lib_2": {
       "locked": {
-        "lastModified": 1792290253,
-        "narHash": "sha256-Kgup1sH+/4qilwusTsSZ4PVjvVABEu5mrgWcZqZ7ePw=",
+        "lastModified": 1792895748,
+        "narHash": "sha256-yp5c8UsnvGcJQ6hQcbXqpfK9qPhH1iNYdoVO6zjNamA=",
         "owner": "nix-community",
         "repo": "nixpkgs.lib",
-        "rev": "d0f596215fbb1603854039023c281b7c2ed1fd33",
+        "rev": "bdfc468264d9078f56dcf98d6b4e37f539d37399",
         "type": "github"
       },
       "original": {
