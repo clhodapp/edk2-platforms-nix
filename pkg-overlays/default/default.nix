@@ -10,7 +10,7 @@
 # The package tree stays at pkgs/edk2-platforms-nix: the release
 # workflow writes its version.nix, and the lib overlay and extras.nix
 # read it too.
-{ closure-inputs, closure-lib, ... }:
+{ closure-sources, closure-lib, ... }:
 let
   edk2Lib = closure-lib.edk2-platforms-nix;
 in
@@ -19,7 +19,7 @@ in
     { callPackage, lib, ... }:
     import ../../pkgs/edk2-platforms-nix {
       inherit callPackage lib edk2Lib;
-      inherit (closure-inputs) edk2-src edk2-unstable-src edk2-platforms;
+      inherit (closure-sources) edk2-src edk2-unstable-src edk2-platforms;
     }
   ) "edk2-platforms-nix";
 }
