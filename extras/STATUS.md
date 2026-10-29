@@ -1,6 +1,6 @@
 # Extras build status
 
-Written by extras.yml for commit `923c67c2fbfb`. Each feature is built against the edk2 stable tag as `extras.x86_64-linux.<name>` (edk2 202608) and against edk2 master as `extras.x86_64-linux.<name>-unstable` (edk2 0-unstable-20261026). A failure names the commit at which the attribute last built, and `extras-last-good.x86_64-linux.<attribute>` builds it from that commit.
+Written by extras.yml for commit `7112eaa137d2`. Each feature is built against the edk2 stable tag as `extras.x86_64-linux.<name>` (edk2 202608) and against edk2 master as `extras.x86_64-linux.<name>-unstable` (edk2 0-unstable-20261029). A failure names the commit at which the attribute last built, and `extras-last-good.x86_64-linux.<attribute>` builds it from that commit.
 
 | Feature | Stable | Unstable |
 |---|---|---|
