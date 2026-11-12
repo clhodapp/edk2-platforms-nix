@@ -12,7 +12,7 @@ Verify a download against `SHA256SUMS` before installing it.
 
 ## Versioning
 
-A release is `v<edk2>.<revision>`. `<edk2>` is the edk2 stable tag the batch is built against (`edk2-stable<edk2>`); each new stable tag starts a new series at revision 0. `<revision>` counts rebuilds against that tag: it advances whenever a move of the drivers' source (edk2-platforms) or of the toolchain (nixpkgs) changes any of the binaries, and when this repository's own build configuration changes. Every driver and both architectures are built together from one commit, so a release always carries the whole set. The "This release" table below names the exact commits.
+A release is `v<edk2>.<revision>`. `<edk2>` is the edk2 stable tag the batch is built against (`edk2-stable<edk2>`); each new stable tag starts a new series at revision 0. `<revision>` counts rebuilds against that tag: it advances whenever a move of the drivers' source (edk2-platforms) or of the toolchain (nixpkgs) changes any of the binaries, and when the build configuration in this repository changes. Every driver and both architectures are built together from one commit, so a release always carries the whole set. The "This release" table below names the exact commits.
 
 ## Supported platforms
 
@@ -30,7 +30,7 @@ The FTDI driver produces a serial port; making it a console is the platform's `C
 
 ## Secure Boot
 
-If Secure Boot is enabled, a driver must be signed by a key your platform's signature database trusts, or the firmware will skip it. Signing with your own db key:
+If Secure Boot is enabled, a driver must be signed by a key your platform's signature database trusts, or the firmware will skip it. Signing with a db key you enrolled:
 
 ```
 sbsign --key db.key --cert db.crt \

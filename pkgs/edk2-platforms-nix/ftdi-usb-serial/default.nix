@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: MIT
 # FtdiUsbSerialDxe.efi: a UEFI driver producing the Serial I/O protocol
 # on an FTDI USB-to-serial adapter (FT232 and kin), from edk2-platforms'
-# OptionRomPkg. It produces the port only; the firmware's own terminal
-# driver turns it into a console once the platform's ConIn/ConOut name
-# it. Built through a DSC of this repository's own (dsc/) that lists
+# OptionRomPkg. It produces the port only; the terminal driver in the
+# firmware turns it into a console once the platform's ConIn/ConOut name
+# it. Built through a DSC this repository authors (dsc/) that lists
 # the one module: OptionRomPkg.dsc also carries a legacy ATAPI driver,
 # a Cirrus VGA driver, a Tulip UNDI, and a Renesas xHCI firmware
 # loader, and its build rules no longer generate with current

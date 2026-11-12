@@ -10,10 +10,10 @@
       # applied as an overlay on the whole set: edk2.mkDerivation takes
       # BaseTools from buildPackages.edk2, and AArch64 builds come from
       # pkgsCross, so a per-package override would leave those at
-      # nixpkgs' own edk2.
+      # the edk2 of nixpkgs.
       #
-      # The tree comes without submodules. nixpkgs' recipe patches its
-      # own tree for the GCC5 toolchain (reading the prefix from the
+      # The tree comes without submodules. The nixpkgs recipe patches the
+      # tree it builds for the GCC5 toolchain (reading the prefix from the
       # environment) and de-vendors OpenSSL; from edk2-stable202608 GCC5
       # is gone and the GCC toolchain reads its prefix from the
       # environment already (see pkgs/edk2-platforms-nix/build-dsc.nix),

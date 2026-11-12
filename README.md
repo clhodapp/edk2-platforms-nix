@@ -10,7 +10,7 @@ pinned Nix expressions.
 
 edk2-platforms is where TianoCore keeps everything that is not the edk2
 core: board firmware, silicon packages, and a handful of drivers and
-feature packages that build on their own against the core. A few of
+feature packages that build standalone against the core. A few of
 those drivers are useful loaded from an EFI System Partition on any
 machine, by systemd-boot, rEFInd, a UEFI shell, or a `Driver####`
 entry:
@@ -18,7 +18,7 @@ entry:
 | Package | Driver | What it does | Checked by |
 |---|---|---|---|
 | `ext4-dxe` | Ext4Dxe | Read-only ext4 (and ext2/ext3) filesystem access, checksums verified; what lets systemd-boot read an ext4 XBOOTLDR partition | Reading a stock `mkfs.ext4` volume back byte for byte in a VM |
-| `ftdi-usb-serial` | FtdiUsbSerialDxe | Serial I/O on FTDI USB-to-serial adapters, for firmware without a port of its own; x86-64 only (upstream marks it IA32/X64, and the AArch64 build faults on binding the emulated adapter) | Binding QEMU's emulated FT232 and publishing Serial I/O in a VM |
+| `ftdi-usb-serial` | FtdiUsbSerialDxe | Serial I/O on FTDI USB-to-serial adapters, for firmware without a built-in serial port; x86-64 only (upstream marks it IA32/X64, and the AArch64 build faults on binding the emulated adapter) | Binding QEMU's emulated FT232 and publishing Serial I/O in a VM |
 | `asix-usb-ethernet` | Ax88179, Ax88772c | Networking on ASIX USB Ethernet adapters | Loading under firmware and registering a driver binding |
 | `displaylink-gop` | DisplayLinkGop | Graphics output on DisplayLink USB display adapters and docks | Loading under firmware and registering a driver binding |
 | `chaoskey` | ChaosKeyDxe | The RNG protocol from a ChaosKey USB entropy device | Loading under firmware and registering a driver binding |
@@ -30,8 +30,8 @@ there; the FTDI driver has no AArch64 variants), placing
 described below.
 
 This repository adds no code to the drivers. It pins the edk2 core at a
-stable tag and edk2-platforms at a commit, builds each driver's own DSC
-(or, for the FTDI driver, a DSC of this repository's listing just that
+stable tag and edk2-platforms at a commit, builds the DSC upstream ships
+with each driver (or, for the FTDI driver, a DSC of this repository's listing just that
 module, since upstream's lists it beside modules that no longer build),
 and checks every binary in a VM before release.
 
@@ -40,7 +40,7 @@ and checks every binary in a VM before release.
 Releases carry every drop-in for both architectures, named for
 systemd-boot's drivers directory (`ext4_x64.efi`, `ext4_aa64.efi`,
 `ftdiserial_x64.efi`, and so on), plus `SHA256SUMS`. The set is
-generated from the packages' own declarations; `nix build
+generated from the declarations in the packages; `nix build
 .#release-manifest` prints it.
 
 A release is `v<edk2>.<revision>`:
@@ -65,8 +65,9 @@ every push to `main` and weekly, and three things move the version:
   existing version in the middle of one, nor advance the pins: what a
   burst changed is released against the same upstream as the release
   before it. It bumps `revision` and releases when started
-  from the Actions tab with "bump" checked (the burst is over), or on
-  its own once `main` has had no change of its own for a week; until
+  from the Actions tab with "bump" checked (the burst is over), or
+  automatically once no file of this repository has changed on `main`
+  for a week; until
   then it refuses. After that release the pins advance again. A burst
   that moves the edk2 tag itself starts a new series at once.
 
@@ -101,7 +102,7 @@ integration features: their validation DSCs build the feature's PEI,
 DXE, and SMM modules against MinPlatformPkg, for whoever integrates one
 into a firmware image. They are useless as loose binaries and useful
 as a pinned, known-to-build expression, so they are
-`extras.x86_64-linux.<name>`: built best-effort by their own workflow
+`extras.x86_64-linux.<name>`: built best-effort by a separate workflow
 (`extras.yml`), with the outcome of each recorded in
 `extras/STATUS.md`, never gating a check run or a release, and never
 pushed to cachix. `nix build .#extras.x86_64-linux.intel-acpi-debug-feature`
@@ -157,11 +158,11 @@ workflow runs the stable variants' checks before publishing.
 flake checks with the repository's Actions cache holding an on-disk Nix
 binary cache of what the checks built, less what cache.nixos.org
 serves. A pull request that leaves `.github/` alone is built by
-`main`'s copy of the pipeline; one that changes it is built by its own
-copy under its own cache scope. `main`'s builds are pushed to the
+`main`'s copy of the pipeline; a pull request that changes it is built
+by the copy it carries, under the cache scope of that request. `main`'s builds are pushed to the
 `clhodapp` cachix cache, which `release.yml` substitutes from.
 `extras.yml` runs separately, keeps its outputs in the Actions cache
-under its own key prefix, and pushes nothing to cachix.
+under a separate key prefix, and pushes nothing to cachix.
 
 ## Binary cache
 
@@ -180,7 +181,7 @@ using them too:
 The flake's `nixConfig` declares all three, so a direct `nix build` or
 `nix flake check` here uses them once accepted: answer Nix's prompt, or
 pass `--accept-flake-config`. A flake that consumes this one as an
-input must add them to its own `extra-substituters` and
+input must add them to its `extra-substituters` and
 `extra-trusted-public-keys`; Nix does not carry an input's settings
 into the consumer.
 

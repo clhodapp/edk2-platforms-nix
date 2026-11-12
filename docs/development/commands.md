@@ -32,7 +32,7 @@ architectures its DSC supports; and checks in
 `configs/flake/edk2-platforms-nix/default.nix` through `forVariants`. The
 release manifest and the release workflow pick it up from there.
 
-Releasing after a burst of changes to this repository's own files:
+Releasing after a burst of changes to the files this repository authors:
 start the `release` workflow from the Actions tab with "bump" checked.
 It bumps `revision` in `pkgs/edk2-platforms-nix/version.nix`, pushes,
 and publishes the new version in the same run, provided the drivers

@@ -56,8 +56,8 @@ let
     }
   ];
 
-  # The DSC builder for a variant, over this package set (callPackage's
-  # own, reached through it).
+  # The DSC builder for a variant, over this package set (the set
+  # callPackage resolves arguments from, reached through it).
   buildDscFor =
     v:
     callPackage (

@@ -43,7 +43,7 @@ let
 
   # The two edk2 cores each feature is built against, as for the
   # drivers (see pkgs/edk2-platforms-nix/default.nix): the stable tag
-  # the releases use, under the feature's own name, and edk2 master as
+  # the releases use, under the name of the feature, and edk2 master as
   # last advanced, under `<name>-unstable`. edk2-platforms has no
   # stable tags and is pinned to its master, which may already depend
   # on edk2 changes made after the stable tag; the unstable build shows

@@ -4,7 +4,7 @@
 # the UEFI shell `load`s the driver and `connect -r`s so it binds, and
 # the check requires a Serial I/O handle whose device path runs through
 # a USB node to exist afterwards, which only the loaded driver can have
-# produced (the firmware's own serial port, if any, sits on the platform
+# produced (a built-in serial port of the firmware, if any, sits on the platform
 # bus). Whether a console then uses that port is the platform's
 # ConIn/ConOut choice and not the driver's; nothing here exercises it.
 { pkgs, ftdiDriver }:

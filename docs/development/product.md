@@ -10,22 +10,23 @@ unmodified for x86-64 and AArch64, checked in a VM, and released as
 prebuilt binaries whenever what goes into them changes. A release is
 the deliverable: a user without Nix copies a file onto an EFI System
 Partition. The ext4 driver is what lets systemd-boot read an ext4
-XBOOTLDR partition, which is the use the fleet has for it.
+XBOOTLDR partition, which is the use the ch-personal-machines NixOS
+configurations have for it.
 
 The extras (the Intel advanced-feature packages, and whatever else in
 the tree builds standalone but is not a drop-in) are carried as pinned
 Nix expressions: a build attribute that is known to compile at these
-pins, for someone integrating a feature into their own firmware image.
+pins, for someone integrating a feature into a firmware image.
 They are built best-effort, never released, and never allowed to hold
 anything else.
 
-## Why a repository of its own
+## Why a separate repository
 
 The drivers are built from source: the edk2 core at a stable tag and
 edk2-platforms at a pinned commit, with the toolchain from a pinned
 nixpkgs stable channel, so a binary is reproducible from the commit
-that released it. Keeping the build in a repository of its own gives it
-a release cadence tied to its own inputs and a consumer surface of two
+that released it. Keeping the build in a separate repository gives it
+a release cadence tied to its inputs and a consumer surface of two
 kinds: Nix packages and an overlay for flakes, release assets for
 everything else (a NixOS module that ships a driver by URL and hash, a
 hand-managed EFI System Partition).
@@ -59,9 +60,9 @@ each. Three things move the version:
   does not advance the pins while one is in progress: what a burst
   changed is released against the same upstream as the release before
   it. It bumps `revision` and releases when told the burst is over
-  (the workflow started with `bump` checked), or on its own once `main`
-  has had no change of its own for a week (pin moves and the files the
-  workflows write do not count); otherwise it refuses. After the
+  (the workflow started with `bump` checked), or automatically once no
+  file this repository authors has changed on `main` for a week (pin
+  moves and the files the workflows write do not count); otherwise it refuses. After the
   burst-end release it starts the run that advances the pins again, so
   tracking upstream resumes at once. A burst that moves the edk2 tag
   itself is a new series: the version follows the lock and
@@ -92,14 +93,14 @@ checks do not gate a release.
 
 `extras.<system>.<name>` holds the Intel feature packages' validation
 builds (`configs/flake/edk2-platforms-nix/extras.nix`). They live outside
-`packages` and `checks` because the fleet's check pipeline builds every
+`packages` and `checks` because the check pipeline builds every
 attribute of both and fails on any, and a feature package that stops
 building at a new edk2 tag must not turn every pull request red or
 hold a release. Each feature is built against the edk2 stable tag as
 `<name>` and against edk2 master as `<name>-unstable`, because
 edk2-platforms has no stable tags and its master may already need edk2
-changes made after the tag. `extras.yml` builds each attribute in its
-own job and records the outcome of every attribute in
+changes made after the tag. `extras.yml` builds each attribute in a
+separate job and records the outcome of every attribute in
 `extras/STATUS.md` on main. It keeps a marker of each successful
 derivation in the repository's Actions cache, so an unchanged
 derivation is not built again, and pushes nothing to cachix.

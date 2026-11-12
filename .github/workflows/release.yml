@@ -22,21 +22,22 @@
 #   it does not advance the pins either: the burst's changes are
 #   released against the same upstream as the release before them.
 #   The run bumps `revision` when told the burst is over (a dispatch
-#   with `bump`) or once main has had no change of its own for a week
+#   with `bump`) or once no file this repository authors has changed on
+#   main for a week
 #   (the weekly run finds it so), refuses otherwise, and after the
 #   burst-end release starts the run that advances the pins again.
 #   A burst that moves the edk2 tag itself is a new series: the
 #   version follows the lock and `v<newtag>.0` is created at once.
 #
-# Every run: find the release under the version and whether this
-# repository's own files changed since it, advance the pins unless
+# Every run: find the release under the version and whether the files
+# this repository authors changed since it, advance the pins unless
 # they did (the weekly run and a dispatch with `advance`), reconcile
 # `edk2` in version.nix with the lock, build the stable checks, build
 # every released driver as the manifest lists them, then compare with
 # the release under the version's tag: none, create it at this commit;
 # identical, done; different, the rules above.
 # A commit this workflow pushes (a pin advance, a reconciled version, an
-# automatic bump) carries the workflow's own token, which starts no
+# automatic bump) carries the GITHUB_TOKEN of the workflow, which starts no
 # other run; the release for it is created by the run that pushed it.
 # The `unstable` packages are advanced here but checked by check.yml
 # only, and the `extras` are built by extras.yml only.
@@ -104,12 +105,12 @@ jobs:
           skipPush: true
           extraPullNames: nix-community,numtide
 
-      # The release under the version in version.nix, and whether this
-      # repository's own files changed since it. The files the workflows
-      # write themselves (the locks, the version file, the extras
-      # status and last-good record under extras/) are not its own
-      # changes. Own changes since a release
-      # mean a burst of work is in progress: the drivers under that
+      # The release under the version in version.nix, and whether the
+      # files this repository authors changed since it. The files the
+      # workflows write (the locks, the version file, the extras status
+      # and last-good record under extras/) do not count. A change to an
+      # authored file since a release
+      # means a burst of work is in progress: the drivers under that
       # version must not change, so nothing can be released until the
       # burst ends, and the pins stay where the release has them.
       - name: Find the release under this version and what changed since it
@@ -131,9 +132,9 @@ jobs:
           if [[ -z "$released" ]]; then
             echo "No release $tag yet."
           elif [[ -z "$changed" ]]; then
-            echo "Release $tag is at $released; nothing of this repository's own changed since."
+            echo "Release $tag is at $released; no file this repository authors changed since."
           else
-            echo "Release $tag is at $released; this repository's own files changed since (last $quiet_days days ago):"
+            echo "Release $tag is at $released; files this repository authors changed since (last $quiet_days days ago):"
             while read -r f; do echo "  $f"; done <<<"$changed"
           fi
           {
@@ -159,7 +160,7 @@ jobs:
           }
 
           if [[ "$ADVANCE" == "true" && "$LOCKED" == "true" ]]; then
-            echo "::notice::Not advancing the pins: this repository's own files changed since release $TAG, so the drivers cannot be released until that burst ends (start this workflow with \`bump\`, or leave main unchanged for a week). The pins stay where the release has them until then."
+            echo "::notice::Not advancing the pins: files this repository authors changed since release $TAG, so the drivers cannot be released until that burst ends (start this workflow with \`bump\`, or leave main unchanged for a week). The pins stay where the release has them until then."
             ADVANCE=false
           fi
 
@@ -264,8 +265,8 @@ jobs:
           diff released.SHA256SUMS artifacts/SHA256SUMS || true
 
           # Who bumps: the run, when only pins moved since the released
-          # commit; otherwise a burst of this repository's own changes
-          # is in progress, and the run bumps when told the burst is
+          # commit; otherwise a burst of changes to the files this
+          # repository authors is in progress, and the run bumps when told the burst is
           # over or when main has been quiet for long enough, and
           # refuses in the middle of one. (The release and what changed
           # since it were found before the pins were advanced; the pins
@@ -281,7 +282,7 @@ jobs:
             reason="main's last change is $QUIET_DAYS_SO_FAR days old"
             burst_ended=true
           else
-            echo "::error::This commit builds drivers that differ from release $tag, and this repository's own files changed since it (last $QUIET_DAYS_SO_FAR days ago). Start this workflow with \`bump\` checked to release it now; it releases itself once main has had no change for $QUIET_DAYS days."
+            echo "::error::This commit builds drivers that differ from release $tag, and files this repository authors changed since it (last $QUIET_DAYS_SO_FAR days ago). Start this workflow with \`bump\` checked to release it now; it releases itself once main has had no change for $QUIET_DAYS days."
             exit 1
           fi
           echo "burst_ended=$burst_ended" >> "$GITHUB_OUTPUT"
@@ -349,7 +350,7 @@ jobs:
       # burst kept, so tracking upstream resumes now rather than at the
       # next weekly run: the next run advances the pins and, if any
       # driver changed under them, releases again. A workflow_dispatch
-      # is the one event the workflow's own token does start.
+      # is the one event the GITHUB_TOKEN of the workflow does start.
       - name: Resume tracking upstream
         if: steps.compare.outputs.burst_ended == 'true'
         env:

@@ -1,9 +1,9 @@
 ## @file
-#  Builds edk2-platforms' FtdiUsbSerialDxe on its own. OptionRomPkg.dsc
+#  Builds edk2-platforms' FtdiUsbSerialDxe alone. OptionRomPkg.dsc
 #  lists it beside a legacy ATAPI driver, a Cirrus VGA driver, a Tulip
 #  UNDI, and a Renesas xHCI firmware loader, and its build rules no
 #  longer generate cleanly with current BaseTools; the module itself has
-#  no dependency outside MdePkg and OptionRomPkg's own DEC. The library
+#  no dependency outside MdePkg and the DEC of OptionRomPkg. The library
 #  mappings and PCDs are OptionRomPkg.dsc's.
 #
 #  SPDX-License-Identifier: MIT

@@ -3,7 +3,7 @@
 # protocol on DisplayLink USB display adapters and docks, from
 # edk2-platforms' Drivers/DisplayLink. The DSC passes
 # INF_DRIVER_VERSION through to the compiler without defining it
-# itself; the INF's own value is given here so the define is never
+# itself; the value from the INF is given here so the define is never
 # empty.
 { buildDsc }:
 buildDsc {

@@ -3,8 +3,8 @@
 # formatter a NixOS installer uses. The firmware boots the UEFI shell from
 # a FAT disk; a second disk carries an ext4 filesystem produced by nixpkgs'
 # mkfs.ext4 with stock defaults (the tool disko invokes for
-# `format = "ext4"`, so the feature set — 64bit, extents, flex_bg,
-# metadata_csum[_seed], … — is the one the driver meets in the field),
+# `format = "ext4"`, so the feature set (64bit, extents, flex_bg,
+# metadata_csum[_seed], …) is the one the driver meets in the field),
 # populated offline via mke2fs -d. startup.nsh loads Ext4Dxe.efi,
 # reconnects handles so the driver binds the ext4 BlockIo, remaps, and
 # copies a payload from the ext4 volume back onto the FAT disk: a
@@ -19,7 +19,7 @@
 { pkgs, ext4Dxe }:
 let
   aarch64 = ext4Dxe.stdenv.hostPlatform.isAarch64;
-  # Firmware and shell for the driver's own architecture: the host's
+  # Firmware and shell for the architecture of the driver: the host's
   # packages for x86-64, the cross set's for AArch64.
   targetPkgs = if aarch64 then pkgs.pkgsCross.aarch64-multiplatform else pkgs;
   ovmf = targetPkgs.OVMF;

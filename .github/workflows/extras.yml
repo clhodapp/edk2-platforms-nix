@@ -4,7 +4,7 @@
 # edk2-platforms packages this repository carries as pinned Nix
 # expressions but does not release. Each feature is built twice, against
 # the edk2 stable tag (`<name>`) and against edk2 master
-# (`<name>-unstable`), each in its own job, and any job may fail
+# (`<name>-unstable`), each in a separate job, and any job may fail
 # without failing the run, since a feature package that stops building
 # is a fact to record, not a reason to hold the drivers. The outcome of
 # every attribute is written to extras/STATUS.md on main, and
@@ -16,7 +16,7 @@
 # A build's outcome is a function of its derivation, so a job first
 # looks for a marker of a successful build of the same derivation in
 # this repository's Actions cache and builds only when there is none.
-# The markers are a few bytes each, under their own key prefix; the
+# The markers are a few bytes each, under a separate key prefix; the
 # build outputs themselves are kept nowhere, and nothing is pushed to
 # cachix.
 name: extras

@@ -30,7 +30,7 @@
   # installs the whole Build tree instead (a package build).
   modules ? [ ],
   # Directories added to PACKAGES_PATH after the edk2 workspace and
-  # edk2-platforms (a DSC of this repository's own, for instance).
+  # edk2-platforms (a DSC this repository authors, for instance).
   extraPackagePaths ? [ ],
   # Extra `build` arguments (-D defines, further -a architectures).
   buildFlags ? [ ],
@@ -54,7 +54,7 @@ edk2.mkDerivation dsc {
   # nixpkgs' compiler wrapper adds -Wformat -Wformat-security, and
   # OpensslLib's INF takes -Wformat back; GCC then rejects the leftover
   # -Wformat-security under -Werror. Warning flags only, no codegen
-  # change (nixpkgs' own edk2 recipe drops the same flag).
+  # change (the edk2 recipe in nixpkgs drops the same flag).
   hardeningDisable = [ "format" ];
 
   env = {
@@ -78,7 +78,7 @@ edk2.mkDerivation dsc {
   postPatch = ''
     # edk2.mkDerivation links BaseTools to the edk2 store path. A DSC
     # with structured PCDs makes the build compile PcdValueInit with
-    # BaseTools' own makefiles, which reach MdePkg by a relative path
+    # the BaseTools makefiles, which reach MdePkg by a relative path
     # from BaseTools/Source/C (resolved through the symlink, into the
     # store) and link the binary into BaseTools/Source/C/bin (read-only
     # there). A tree of real directories with each file linked gives

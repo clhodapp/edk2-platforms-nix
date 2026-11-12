@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # ChaosKeyDxe.efi: a UEFI driver producing the RNG protocol from an
 # Altus Metrum ChaosKey, a USB hardware random number generator, for
-# firmware with no entropy source of its own. From edk2-platforms'
+# firmware with no built-in entropy source. From edk2-platforms'
 # Silicon/Openmoko, whose Openmoko.dsc builds this one module.
 { buildDsc }:
 buildDsc {
