@@ -4,7 +4,6 @@
   config,
   inputs,
   lib,
-  self,
   ...
 }:
 {
@@ -31,10 +30,19 @@
     packages.export.enabled = true;
   };
 
-  # checks and formatter live in isolated partitions; packages deliberately
-  # do not: downstream flakes consume packages.* against this flake's main
-  # lock (inherited locks), so dev-only inputs must not taint them.
-  partitionedAttrs.checks = "checks";
+  # The checks of edk2-platforms-nix, with the pins of tests/dependencies
+  # that only the checks need (configs/flake/checks). The caisson top
+  # gathers the checks of every configuration declared inside it into
+  # its `checks` output. This selector passes the configuration up to
+  # nothing, so a flake that reads the exports of edk2-platforms-nix
+  # evaluates neither the configuration nor its pins. Downstream flakes
+  # consume the packages against the main lock, which holds none of the
+  # pins of tests/dependencies.
+  caisson.flake-parts.configurations.checks = lib.caisson.flake-parts.mkConfiguration {
+    inherit (lib.caisson.pins.flake-compat ../../../tests/dependencies) dependencies;
+  };
+  caisson.flake-parts.exported = _: { };
+
   partitionedAttrs.formatter = "formatter";
 
   partitions.formatter = {
@@ -44,83 +52,6 @@
       {
         imports = [ inputs.treefmt-nix.flakeModule ];
         perSystem.treefmt.programs.nixfmt.enable = true;
-      };
-  };
-
-  partitions.checks = {
-    extraInputs = (lib.caisson.pins.flake-compat ../../../tests/dependencies).dependencies;
-    module =
-      { inputs, self, ... }:
-      {
-        imports = [ inputs.treefmt-nix.flakeModule ];
-        perSystem =
-          { pkgs, ... }:
-          let
-            drivers = pkgs.edk2-platforms-nix;
-            # A check for every variant a drop-in has (a driver its DSC
-            # supports on one architecture only has two): the stable
-            # builds gate releases (the release workflow builds them by
-            # name), the edk2-master ones gate main's check run only.
-            forVariants =
-              name: mk:
-              lib.listToAttrs (
-                map (suffix: lib.nameValuePair "${name}${suffix}" (mk drivers."${name}${suffix}")) (
-                  builtins.filter (suffix: drivers ? "${name}${suffix}") [
-                    ""
-                    "-aarch64"
-                    "-unstable"
-                    "-unstable-aarch64"
-                  ]
-                )
-              );
-          in
-          {
-            checks = {
-              smoke = pkgs.runCommand "edk2-platforms-nix-smoke-check" { } ''
-                touch "$out"
-              '';
-            }
-            # Each ext4 driver reads a stock-mkfs.ext4 volume back byte
-            # for byte from a UEFI shell (see tests/ext4-dxe-vm.nix):
-            # OVMF on an emulated x86-64 machine, ArmVirtQemu on an
-            # emulated AArch64 one.
-            // forVariants "ext4-dxe" (
-              ext4Dxe:
-              import ../../../tests/ext4-dxe-vm.nix {
-                inherit pkgs ext4Dxe;
-              }
-            )
-            # The FTDI driver binds QEMU's emulated FT232 and publishes
-            # Serial I/O on it (see tests/ftdi-serial-vm.nix).
-            // forVariants "ftdi-usb-serial" (
-              ftdiDriver:
-              import ../../../tests/ftdi-serial-vm.nix {
-                inherit pkgs ftdiDriver;
-              }
-            )
-            # The USB device drivers QEMU cannot emulate a device for
-            # load under the firmware and register their driver binding
-            # (see tests/driver-load-vm.nix).
-            // forVariants "asix-usb-ethernet" (
-              driver:
-              import ../../../tests/driver-load-vm.nix {
-                inherit pkgs driver;
-              }
-            )
-            // forVariants "displaylink-gop" (
-              driver:
-              import ../../../tests/driver-load-vm.nix {
-                inherit pkgs driver;
-              }
-            )
-            // forVariants "chaoskey" (
-              driver:
-              import ../../../tests/driver-load-vm.nix {
-                inherit pkgs driver;
-              }
-            );
-            treefmt.programs.nixfmt.enable = true;
-          };
       };
   };
 
