@@ -1,74 +1,74 @@
 {
   "x86_64-linux": {
     "intel-acpi-debug-feature-unstable": {
-      "flake": "github:clhodapp/edk2-platforms-nix/2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "commit": "2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "edk2Version": "0-unstable-20261117"
+      "flake": "github:clhodapp/edk2-platforms-nix/71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "commit": "71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "edk2Version": "0-unstable-20261123"
     },
     "intel-asf-feature-unstable": {
-      "flake": "github:clhodapp/edk2-platforms-nix/2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "commit": "2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "edk2Version": "0-unstable-20261117"
+      "flake": "github:clhodapp/edk2-platforms-nix/71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "commit": "71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "edk2Version": "0-unstable-20261123"
     },
     "intel-beep-debug-feature-unstable": {
-      "flake": "github:clhodapp/edk2-platforms-nix/2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "commit": "2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "edk2Version": "0-unstable-20261117"
+      "flake": "github:clhodapp/edk2-platforms-nix/71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "commit": "71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "edk2Version": "0-unstable-20261123"
     },
     "intel-logo-feature-unstable": {
-      "flake": "github:clhodapp/edk2-platforms-nix/2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "commit": "2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "edk2Version": "0-unstable-20261117"
+      "flake": "github:clhodapp/edk2-platforms-nix/71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "commit": "71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "edk2Version": "0-unstable-20261123"
     },
     "intel-network-feature-unstable": {
-      "flake": "github:clhodapp/edk2-platforms-nix/2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "commit": "2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "edk2Version": "0-unstable-20261117"
+      "flake": "github:clhodapp/edk2-platforms-nix/71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "commit": "71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "edk2Version": "0-unstable-20261123"
     },
     "intel-platform-payload-feature-unstable": {
-      "flake": "github:clhodapp/edk2-platforms-nix/2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "commit": "2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "edk2Version": "0-unstable-20261117"
+      "flake": "github:clhodapp/edk2-platforms-nix/71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "commit": "71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "edk2Version": "0-unstable-20261123"
     },
     "intel-post-code-debug-feature-unstable": {
-      "flake": "github:clhodapp/edk2-platforms-nix/2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "commit": "2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "edk2Version": "0-unstable-20261117"
+      "flake": "github:clhodapp/edk2-platforms-nix/71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "commit": "71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "edk2Version": "0-unstable-20261123"
     },
     "intel-s3-feature-unstable": {
-      "flake": "github:clhodapp/edk2-platforms-nix/2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "commit": "2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "edk2Version": "0-unstable-20261117"
+      "flake": "github:clhodapp/edk2-platforms-nix/71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "commit": "71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "edk2Version": "0-unstable-20261123"
     },
     "intel-smbios-feature-unstable": {
-      "flake": "github:clhodapp/edk2-platforms-nix/2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "commit": "2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "edk2Version": "0-unstable-20261117"
+      "flake": "github:clhodapp/edk2-platforms-nix/71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "commit": "71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "edk2Version": "0-unstable-20261123"
     },
     "intel-spcr-feature-unstable": {
-      "flake": "github:clhodapp/edk2-platforms-nix/2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "commit": "2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "edk2Version": "0-unstable-20261117"
+      "flake": "github:clhodapp/edk2-platforms-nix/71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "commit": "71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "edk2Version": "0-unstable-20261123"
     },
     "intel-template-feature-unstable": {
-      "flake": "github:clhodapp/edk2-platforms-nix/2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "commit": "2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "edk2Version": "0-unstable-20261117"
+      "flake": "github:clhodapp/edk2-platforms-nix/71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "commit": "71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "edk2Version": "0-unstable-20261123"
     },
     "intel-usb3-debug-feature-unstable": {
-      "flake": "github:clhodapp/edk2-platforms-nix/2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "commit": "2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "edk2Version": "0-unstable-20261117"
+      "flake": "github:clhodapp/edk2-platforms-nix/71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "commit": "71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "edk2Version": "0-unstable-20261123"
     },
     "intel-usb3-debug-feature": {
-      "flake": "github:clhodapp/edk2-platforms-nix/2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "commit": "2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
+      "flake": "github:clhodapp/edk2-platforms-nix/71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "commit": "71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
       "edk2Version": "202608"
     },
     "intel-virtual-keyboard-feature-unstable": {
-      "flake": "github:clhodapp/edk2-platforms-nix/2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "commit": "2a209e851827a8104ef90cbcd1ceeebbcaa6711b",
-      "edk2Version": "0-unstable-20261117"
+      "flake": "github:clhodapp/edk2-platforms-nix/71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "commit": "71e31d63d6730c0ece9f792cc16271d6ad4c2f8f",
+      "edk2Version": "0-unstable-20261123"
     }
   }
 }
